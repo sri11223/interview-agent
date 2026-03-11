@@ -81,7 +81,7 @@ function AllInterviewPage() {
                             Welcome Back, {user?.name || user?.email?.split('@')[0]?.toUpperCase() || 'User'}!
                         </h1>
                         <p className="text-gray-600">
-                            AI-Driven Interview, Hassel-Free Hiring
+                            AI-Powered Interview Practice
                         </p>
                     </div>
                     <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
@@ -92,7 +92,7 @@ function AllInterviewPage() {
                 </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">All Previously Created Interviews</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">All Practice Sessions</h2>
             
             {interviewList.length === 0 ? (
                 <div className="text-center py-12">

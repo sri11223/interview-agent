@@ -1,8 +1,8 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import WelcomeContainer from '../_components/WelcomeContainer'
 import { ArrowLeft } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Progress } from '@/components/ui/progress';
 import FormContainer from './_components/FormContainer'
 import QuestionList from './_components/QuestionList'
@@ -11,17 +11,27 @@ import { toast } from 'sonner'
 
 function CreateInterview() {
     const router=useRouter();
+    const searchParams = useSearchParams();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState();
     const [interviewData, setInterviewData] = useState();
+
+    // Pre-fill category from URL params (when coming from dashboard cards)
+    useEffect(() => {
+        const category = searchParams.get('category');
+        if (category) {
+            setFormData(prev => ({
+                ...prev,
+                jobPosition: category
+            }));
+        }
+    }, [searchParams]);
 
     const onHandleInputChange = (field,value)=>{
         setFormData(prev=>({
             ...prev,
             [field]: value
         }))
-        console.log('Form Data:', formData)
-
     }
     
     const handleBackClick = () => {
@@ -38,9 +48,9 @@ function CreateInterview() {
     }
 
     const onInterviewFinish = (data) => {
-        console.log('Interview finished with data:', data);
+        console.log('Practice session created:', data);
         setInterviewData(data);
-        setStep(3); // Move to final step
+        setStep(3);
     }
 
     const resetToStart = () => {
@@ -56,12 +66,13 @@ function CreateInterview() {
             <div className='mt-1 px-10 md:px-24 lg:px-44 xl:px-56'>
                 <div className='flex gap-5 items-center'> 
                     <ArrowLeft onClick={handleBackClick} className='cursor-pointer'/>
-                    <h2 className='font-bold text-2xl'>Create New Interview</h2>
+                    <h2 className='font-bold text-2xl'>New Practice Session</h2>
                 </div>
                  <Progress value={step*33.33} className='my-6' />
                  {step==1 ? <FormContainer
                   onHandleInputChange={onHandleInputChange}
                   GoToNext={()=>onGoToNext()}
+                  initialCategory={searchParams.get('category')}
                  />
                  : step==2 && formData ? <QuestionList 
                     formData={formData} 

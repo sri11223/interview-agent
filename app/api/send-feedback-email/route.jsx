@@ -19,7 +19,7 @@ function createEmailTemplate(data) {
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Interview Feedback - AI Recruiter</title>
+    <title>Practice Feedback - PrepAI</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -35,14 +35,14 @@ function createEmailTemplate(data) {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 AI Recruiter - Interview Feedback</h1>
-            <p>Your Interview Results</p>
+            <h1>🎯 PrepAI - Practice Session Feedback</h1>
+            <p>Your Practice Results</p>
         </div>
         
         <div class="content">
             <h2>Hello ${candidateName},</h2>
             
-            <p>Thank you for participating in our AI-powered interview on <strong>${interviewDate}</strong>. We have completed the evaluation of your performance and would like to share the detailed feedback with you.</p>
+            <p>Thank you for completing your AI-powered practice session on <strong>${interviewDate}</strong>. Here is your detailed performance feedback.</p>
             
             <h3>📊 Overall Performance Score</h3>
             <div style="text-align: center; margin: 20px 0;">
@@ -100,16 +100,16 @@ function createEmailTemplate(data) {
                 <li>Keep developing your skills based on the recommendations provided</li>
             </ul>
             
-            <p>Thank you for your time and interest in our organization. We wish you the best in your career journey!</p>
+            <p>Thank you for practicing with PrepAI. Keep up the great work!</p>
             
             <p>Best regards,<br>
-            <strong>AI Recruiter Team</strong><br>
+            <strong>PrepAI Team</strong><br>
             aiinterviewer08@gmail.com</p>
         </div>
         
         <div class="footer">
-            <p>This is an automated email from AI Recruiter. Please do not reply directly to this email.</p>
-            <p>© 2025 AI Recruiter. All rights reserved.</p>
+            <p>This is an automated email from PrepAI. Please do not reply directly to this email.</p>
+            <p>© 2025 PrepAI. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -161,11 +161,11 @@ export async function POST(req) {
         // Email options
         const mailOptions = {
             from: {
-                name: 'AI Recruiter',
+                name: 'PrepAI',
                 address: 'aiinterviewer08@gmail.com'
             },
             to: to,
-            subject: `Interview Feedback - ${candidateName} | AI Recruiter`,
+            subject: `Practice Feedback - ${candidateName} | PrepAI`,
             html: htmlContent
         };
 

@@ -94,8 +94,8 @@ function InterviewFeedbackPage() {
                 <a href="/scheduled-interview" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
                     ← Back to Interview List
                 </a>
-                <h1 className="text-2xl font-bold text-gray-900">Interview Feedback</h1>
-                <p className="text-gray-600">Review candidate feedback and performance</p>
+                <h1 className="text-2xl font-bold text-gray-900">Session Feedback</h1>
+                <p className="text-gray-600">Review your practice performance</p>
             </div>
 
             {/* Interview Details */}
@@ -113,7 +113,7 @@ function InterviewFeedbackPage() {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span>Duration: {interview.duration || 'N/A'} minutes</span>
                             <span>Created: {moment(interview.created_at).format('DD MMM YYYY, HH:mm')}</span>
-                            <span>Candidates: {feedbackList.length}</span>
+                            <span>Sessions: {feedbackList.length}</span>
                         </div>
                     </div>
                 </div>
@@ -122,7 +122,7 @@ function InterviewFeedbackPage() {
             {/* Feedback List */}
             <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">
-                    Candidate Feedback ({feedbackList.length})
+                    Session Feedback ({feedbackList.length})
                 </h3>
 
                 {feedbackList.length === 0 ? (
@@ -134,11 +134,8 @@ function InterviewFeedbackPage() {
                         </div>
                         <h4 className="text-lg font-medium text-gray-900 mb-2">No feedback yet</h4>
                         <p className="text-gray-600 mb-4">
-                            Candidates who complete this interview will have their feedback displayed here.
+                            Complete this practice session to see your feedback here.
                         </p>
-                        <div className="text-sm text-gray-500">
-                            Interview Link: {process.env.NEXT_PUBLIC_HOST_URL}/interview/{interview.interview_id}
-                        </div>
                     </div>
                 ) : (
                     <div className="space-y-4">

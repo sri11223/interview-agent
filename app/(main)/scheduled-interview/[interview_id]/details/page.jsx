@@ -101,7 +101,7 @@ function InterviewDetail() {
                             Welcome Back, {user?.name || user?.email?.split('@')[0]?.toUpperCase() || 'User'}!
                         </h1>
                         <p className="text-gray-600">
-                            AI-Driven interviews, Hassel-Free Hiring
+                            AI-Powered Interview Practice
                         </p>
                     </div>
                     <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
@@ -112,7 +112,7 @@ function InterviewDetail() {
                 </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Interview Detail</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Session Detail</h1>
 
             {/* Interview Details Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

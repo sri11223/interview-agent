@@ -15,9 +15,8 @@ import AutoPhotoSyncIndicator from "@/components/AutoPhotoSyncIndicator";
 // Note: Using console.log instead of console.error to prevent Next.js webpack error interception
 
 function getAssistantOptions(userName, jobPosition, questionList) {
-  console.log("🔧 Creating assistant options with:", { userName, jobPosition, questionList });
+  console.log("Creating assistant options with:", { userName, jobPosition, questionList });
   
-  // Map Supabase questionList (array of objects) to array of strings
   let questionsArr = [];
   if (Array.isArray(questionList) && questionList.length > 0) {
     if (typeof questionList[0] === "object" && questionList[0] !== null && questionList[0].question) {
@@ -28,40 +27,37 @@ function getAssistantOptions(userName, jobPosition, questionList) {
   } else if (questionList && typeof questionList === 'string') {
     questionsArr = [questionList];
   } else {
-    console.error("❌ No valid questions found in questionList:", questionList);
     questionsArr = ["Tell me about yourself and your experience.", "What are your strengths?", "Why do you want this position?"];
   }
   
-  console.log("📝 Questions array created:", questionsArr);
-  
-  const systemPrompt = `You are an AI interviewer conducting a professional interview for the position of ${jobPosition || "Software Developer"}.
+  const systemPrompt = `You are a friendly AI interview coach helping a student named ${userName || "Student"} practice for ${jobPosition || "technical"} interviews.
 
-IMPORTANT: You MUST start the conversation immediately by asking the first question. Do not wait for the candidate to speak first.
+IMPORTANT: You MUST start the conversation immediately by asking the first question. Do not wait for the student to speak first.
 
-Your interview questions are:
+Your practice questions are:
 ${questionsArr.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
 Interview Process:
-1. Start with a brief greeting and immediately ask the first question
-2. Listen to the candidate's response
-3. Provide brief encouraging feedback ("Great answer!", "That's interesting", "Tell me more")
+1. Start with a friendly greeting and immediately ask the first question
+2. Listen to the student's response
+3. Provide brief encouraging feedback ("Great answer!", "That's a good approach", "Think about it from another angle")
 4. Move to the next question
-5. Ask follow-up questions when appropriate
-6. After covering the main questions, wrap up the interview
+5. Ask follow-up questions when the answer needs more depth
+6. After covering the main questions, wrap up the practice session
 
 Guidelines:
+- Be encouraging and supportive - this is practice!
 - Keep responses short and conversational
-- Be encouraging and professional
+- Give hints if the student is stuck
 - Ask one question at a time
-- Wait for responses before continuing
-- Provide feedback on answers
-- Keep the interview flowing naturally
+- Provide constructive feedback
+- Keep the session flowing naturally
 
-Start the interview now by greeting the candidate and asking the first question immediately.`;
+Start the practice now by greeting the student and asking the first question immediately.`;
 
   return {
-    name: "AI Interviewer",
-    firstMessage: `Hello ${userName || "there"}! Welcome to your ${jobPosition || "interview"}. I'm excited to learn more about you. Let's get started with our first question: ${questionsArr[0] || "Tell me about yourself."}`,
+    name: "AI Interview Coach",
+    firstMessage: `Hey ${userName || "there"}! Welcome to your ${jobPosition || "interview"} practice session. I'm your AI interview coach, and I'll help you prepare. Let's dive in! ${questionsArr[0] || "Tell me about yourself."}`,
     transcriber: {
       provider: "deepgram",
       model: "nova-2",
@@ -83,7 +79,7 @@ Start the interview now by greeting the candidate and asking the first question 
       temperature: 0.7,
       maxTokens: 250
     },
-    endCallMessage: "Thank you for your time! The interview has been completed. Good luck!",
+    endCallMessage: "Great practice session! You did well. Check your feedback to see areas to improve. Keep practicing!",
     recordingEnabled: false,
     silenceTimeoutSeconds: 30,
     maxDurationSeconds: 1800
@@ -831,8 +827,8 @@ export default function InterviewSession({ params }) {
   useEffect(() => {
     if (interviewEnded) {
       setTimeout(() => {
-        router.push("/");
-      }, 2000);
+        router.push("/dashboard");
+      }, 5000);
     }
   }, [interviewEnded, router]);
 
@@ -972,8 +968,7 @@ export default function InterviewSession({ params }) {
       {/* Header */}
       <div className="flex items-center justify-between px-8 py-4 border-b bg-white">
         <div className="flex items-center gap-2">
-          <Image src="/logo1.png" alt="AIcruiter" width={40} height={40} />
-          <span className="font-bold text-xl text-gray-800">AIcruiter</span>
+          <span className="font-bold text-xl text-gray-800">PrepAI Practice</span>
         </div>
         <div className="flex items-center gap-2 text-gray-700 font-mono text-lg">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -994,16 +989,16 @@ export default function InterviewSession({ params }) {
 
       {/* Main Content */}
       <div className="flex flex-col items-center mt-8">
-        <h2 className="font-bold text-2xl mb-8">AI Interview Session</h2>
+        <h2 className="font-bold text-2xl mb-8">AI Practice Session</h2>
         {/* Interview will start automatically when questions are loaded */}
         {/* Timer removed from main content, only in header now */}
         <div className="flex flex-row gap-16 mb-12 w-full max-w-5xl justify-center">
-          {/* AI Recruiter Card */}
+          {/* AI Coach Card */}
           <div className={`bg-white rounded-xl shadow flex flex-col items-center justify-center w-80 h-80 transition ${isSpeaking ? "ring-4 ring-blue-400 ring-offset-2" : ""}`}>
             <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center mb-4">
-              <Image src="/ai.jpg" alt="AI Recruiter" width={96} height={96} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
+              <Image src="/ai.jpg" alt="AI Coach" width={96} height={96} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
             </div>
-            <div className="font-semibold text-lg">AI Recruiter</div>
+            <div className="font-semibold text-lg">AI Coach</div>
           </div>
           {/* User Video Card */}
           <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center w-80 h-80">

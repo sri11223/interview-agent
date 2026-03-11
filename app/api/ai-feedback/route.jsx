@@ -96,22 +96,22 @@ function generateFallbackFeedback(conversation, aiResponse) {
     let recommendation = "Not Recommended";
     let recommendationMsg = "";
     
-    // Strict recommendation logic based on actual performance and completion
+    // Recommendation logic based on practice performance and completion
     if (completionPenalty < 0.5) {
-        recommendation = "Not Recommended";
-        recommendationMsg = `Interview was incomplete with limited engagement (${candidateResponses} responses to ${questionCount} questions). Candidate needs to demonstrate better commitment and communication skills before being considered for this role.`;
+        recommendation = "Needs More Practice";
+        recommendationMsg = `This session had limited engagement (${candidateResponses} responses to ${questionCount} questions). Try again and focus on answering all questions thoroughly to get the most out of your practice.`;
     } else if (avgScore >= 8 && completionPenalty >= 0.8) {
-        recommendation = "Hire";
-        recommendationMsg = "Strong candidate with excellent performance across key areas. Demonstrates the skills and experience needed to excel in this role. Highly recommended for hire.";
+        recommendation = "Excellent";
+        recommendationMsg = "Outstanding performance! You demonstrated strong skills across all areas. Keep up the great work and continue challenging yourself with harder topics.";
     } else if (avgScore >= 6.5 && completionPenalty >= 0.7) {
-        recommendation = "Hire";
-        recommendationMsg = "Good candidate with solid performance in most areas. Shows potential for growth and would be a valuable addition to the team with proper onboarding.";
+        recommendation = "Good - Keep Practicing";
+        recommendationMsg = "Solid performance with good understanding in most areas. A few more practice sessions will help you refine your responses and boost your confidence.";
     } else if (avgScore >= 5 && completionPenalty >= 0.6) {
-        recommendation = "Further Review";
-        recommendationMsg = "Candidate shows potential but has areas that need development. Recommend additional technical assessment or interview to better evaluate fit for the role.";
+        recommendation = "Good - Keep Practicing";
+        recommendationMsg = "You're making progress! Focus on the areas where you scored lower and try practicing those specific topics to improve your overall readiness.";
     } else {
-        recommendation = "Not Recommended";
-        recommendationMsg = `While the candidate has some positive qualities, the overall performance (completion rate: ${Math.round(completionPenalty * 100)}%) indicates they need more experience and development before being ready for this position.`;
+        recommendation = "Needs More Practice";
+        recommendationMsg = `Your performance shows room for growth (completion: ${Math.round(completionPenalty * 100)}%). Review the feedback, study the weak areas, and practice again to build your confidence.`;
     }
     
     console.log('📊 Dynamic scores generated:', baseScores, 'Recommendation:', recommendation, 'Completion Rate:', Math.round(completionPenalty * 100) + '%');
@@ -142,13 +142,13 @@ function generatePersonalizedSummary(conversation, scores, analysisData) {
     
     // Start with completion assessment
     if (completionRate < 25) {
-        summary += "The candidate showed minimal engagement during the interview, providing very limited responses. ";
+        summary += "You had minimal engagement during the session, providing very limited responses. ";
     } else if (completionRate < 50) {
-        summary += "The candidate had limited participation in the interview process, answering only some of the questions asked. ";
+        summary += "You answered only some of the questions in this practice session. ";
     } else if (completionRate < 75) {
-        summary += "The candidate participated moderately in the interview, though some questions received incomplete responses. ";
+        summary += "You participated moderately, though some questions received incomplete responses. ";
     } else {
-        summary += "The candidate actively participated throughout the interview with comprehensive responses. ";
+        summary += "Great job! You actively participated throughout the session with comprehensive responses. ";
     }
     
     // Analyze technical performance based on actual scores (with completion penalty applied)
@@ -186,11 +186,11 @@ function generatePersonalizedSummary(conversation, scores, analysisData) {
     
     // Analyze experience level with realistic assessment
     if (expMatches >= 4 && candidateResponses >= 4) {
-        summary += "Substantial relevant experience was evident through detailed project discussions and practical examples.";
+        summary += "You demonstrated substantial knowledge through detailed project discussions and practical examples.";
     } else if (expMatches >= 2 && candidateResponses >= 2) {
-        summary += "Some relevant experience was demonstrated, though additional exposure would strengthen the profile.";
+        summary += "You showed some relevant experience. Practice articulating your projects and accomplishments for stronger impact.";
     } else {
-        summary += "Limited practical experience was evident, possibly due to insufficient opportunity to showcase skills during the brief interview engagement.";
+        summary += "Try to share more about your projects and experiences in future sessions to better showcase your abilities.";
     }
     
     console.log('✅ Generated realistic summary:', summary);

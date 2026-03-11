@@ -94,9 +94,9 @@ function CandidateReport() {
                             <h4 className="font-medium text-gray-900">Recommendation</h4>
                             <div className="flex items-center gap-2">
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                    (feedback.Recommendation || feedback.recommendation) === 'Hire' 
+                                    (feedback.Recommendation || feedback.recommendation) === 'Excellent' 
                                         ? 'bg-green-100 text-green-800' 
-                                        : (feedback.Recommendation || feedback.recommendation) === 'Not Recommended'
+                                        : (feedback.Recommendation || feedback.recommendation) === 'Needs More Practice'
                                         ? 'bg-red-100 text-red-800'
                                         : 'bg-yellow-100 text-yellow-800'
                                 }`}>
@@ -153,8 +153,8 @@ function CandidateReport() {
                 >
                     ← Close Window
                 </button>
-                <h1 className="text-2xl font-bold text-gray-900">Candidate Report</h1>
-                <p className="text-gray-600">Detailed interview performance and feedback</p>
+                <h1 className="text-2xl font-bold text-gray-900">Session Report</h1>
+                <p className="text-gray-600">Detailed practice performance and feedback</p>
             </div>
 
             {/* Candidate Info Card */}

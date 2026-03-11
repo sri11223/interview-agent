@@ -2,7 +2,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboardIcon, Calendar, List, CreditCard } from "lucide-react";
+import { LayoutDashboardIcon, History, BarChart3, Settings, GraduationCap } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -25,18 +25,18 @@ const SideBarOptions = [
     path: '/dashboard'
   },
   {
-    name: 'Schedule Interview',
-    icon: Calendar,
+    name: 'My History',
+    icon: History,
     path: '/scheduled-interview'
   },
   {
-    name: 'All Interview',
-    icon: List,
+    name: 'All Practice',
+    icon: GraduationCap,
     path: '/dashboard/all-interview'
   },
   {
-    name: 'Billing',
-    icon: CreditCard,
+    name: 'Progress',
+    icon: BarChart3,
     path: '/billing'
   },
 ]
@@ -48,17 +48,14 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className='flex flex-col items-center pt-0 space-y-1'>
-        <Image 
-          src={'/logo1.png'} 
-          alt="logo" 
-          width={200}
-          height={100}
-          className="w-[150px]"
-        />
+        <div className="flex items-center gap-2 py-2">
+          <GraduationCap className="h-7 w-7 text-blue-600" />
+          <span className="text-xl font-bold text-gray-900">PrepAI</span>
+        </div>
         <Button className='w-full mt-1' asChild>
           <Link href="/dashboard/create-interview">
             <Plus />
-            Create New Interview
+            New Practice Session
           </Link>
         </Button>
       </SidebarHeader>
@@ -84,7 +81,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="px-4 py-2 text-xs text-muted-foreground">
-          © 2025 Team-AA4
+          PrepAI - Interview Practice Platform
         </div>
       </SidebarFooter>
     </Sidebar>

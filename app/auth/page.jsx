@@ -99,10 +99,10 @@ function Login() {
                     />
 
                     <h2 className="text-xl font-bold text-center mt-4">
-                        Welcome to AiCruiter
+                        Welcome to PrepAI
                     </h2>
                     <p className="text-gray-500 text-center text-sm">
-                        Sign In With Google Authentication
+                        Sign in to start practicing interviews
                     </p>
 
                     <Button className="mt-6 w-full text-sm h-10"
