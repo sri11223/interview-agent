@@ -50,6 +50,9 @@ export default function InterviewSession({ params }) {
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const feedbackGenerationRef = useRef(false);
 
+  // Voice
+  const [voiceGender, setVoiceGender] = useState("female"); // "male" or "female"
+
   // Refs
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -116,18 +119,29 @@ export default function InterviewSession({ params }) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95;
-      utterance.pitch = 1.0;
+      utterance.pitch = voiceGender === "female" ? 1.1 : 0.85;
       const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) ||
-                        voices.find(v => v.lang.startsWith("en-US")) ||
-                        voices.find(v => v.lang.startsWith("en"));
+      let preferred;
+      if (voiceGender === "female") {
+        preferred = voices.find(v => v.name.includes("Google UK English Female") && v.lang.startsWith("en")) ||
+                    voices.find(v => v.name.toLowerCase().includes("female") && v.lang.startsWith("en")) ||
+                    voices.find(v => v.name.includes("Samantha")) ||
+                    voices.find(v => v.name.includes("Zira")) ||
+                    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("woman"));
+      } else {
+        preferred = voices.find(v => v.name.includes("Google UK English Male") && v.lang.startsWith("en")) ||
+                    voices.find(v => v.name.toLowerCase().includes("male") && v.lang.startsWith("en") && !v.name.toLowerCase().includes("female")) ||
+                    voices.find(v => v.name.includes("Daniel")) ||
+                    voices.find(v => v.name.includes("David"));
+      }
+      if (!preferred) preferred = voices.find(v => v.lang.startsWith("en-US")) || voices.find(v => v.lang.startsWith("en"));
       if (preferred) utterance.voice = preferred;
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => { setIsSpeaking(false); resolve(); };
       utterance.onerror = () => { setIsSpeaking(false); resolve(); };
       window.speechSynthesis.speak(utterance);
     });
-  }, []);
+  }, [voiceGender]);
 
   // --- Speech Recognition (listen to student) ---
   const startListening = useCallback(() => {
@@ -242,13 +256,14 @@ export default function InterviewSession({ params }) {
 
     const category = interview.jobPosition || "Technical";
     const firstQ = {
-      "System Design": "How would you design a URL shortening service like bit.ly? Walk me through the high-level architecture.",
-      "DSA": "Can you explain the difference between arrays and linked lists? When would you choose one over the other?",
-      "Development": "Tell me about a project you've built recently. What technologies did you use and what was the most challenging part?",
-      "Behavioral": "Tell me about yourself. What got you interested in software engineering?",
+      "System Design": "Let's start with a classic one. How would you design a URL shortening service like bit.ly? Walk me through the high-level architecture, the components involved, and how you'd handle millions of requests.",
+      "DSA": "Let's warm up with some fundamentals. Can you explain the time complexity of common operations on arrays versus linked lists? For example, what happens when you insert an element at the beginning of each?",
+      "Development": "Let's talk about your development experience. If you were building a full-stack web app with Node.js and React, how would you structure the project? What would your tech stack look like and why?",
+      "Behavioral": "Tell me about yourself. What got you into tech, and what kind of engineering role are you most excited about?",
     };
     const q = firstQ[category] || "Tell me about yourself and your technical background.";
-    const greeting = `Hi ${candidateName || "there"}! Welcome to your ${category} practice session. I'll be your AI interviewer today. Let's get started! ${q}`;
+    const coachName = voiceGender === "female" ? "Sarah" : "Alex";
+    const greeting = `Hi ${candidateName || "there"}! I'm ${coachName}, your AI interview coach. Welcome to your ${category} practice session. Let's make this a great one! ${q}`;
 
     setMessages([{ role: "assistant", content: greeting }]);
     setConversation(`AI Coach: ${greeting}`);
@@ -455,10 +470,14 @@ export default function InterviewSession({ params }) {
             <div className="bg-white rounded-2xl shadow flex flex-col" style={{ height: "460px" }}>
               <div className="px-4 py-3 border-b flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isSpeaking ? "bg-blue-500" : "bg-blue-100"}`}>
-                  <svg className={`w-4 h-4 ${isSpeaking ? "text-white" : "text-blue-600"}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                  {voiceGender === "female" ? (
+                    <span className="text-base">{isSpeaking ? "🗣️" : "👩"}</span>
+                  ) : (
+                    <span className="text-base">{isSpeaking ? "🗣️" : "👨"}</span>
+                  )}
                 </div>
                 <div>
-                  <div className="font-semibold text-sm text-gray-800">AI Interview Coach</div>
+                  <div className="font-semibold text-sm text-gray-800">{voiceGender === "female" ? "Sarah" : "Alex"} — AI Coach</div>
                   <div className="text-xs text-gray-400">
                     {isSpeaking ? "Speaking..." : aiThinking ? "Thinking..." : isListening ? "Your turn — speak now" : interviewStarted ? "Ready" : "Waiting to start"}
                   </div>
@@ -468,10 +487,24 @@ export default function InterviewSession({ params }) {
               <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 {!interviewStarted && !interviewEnded && (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center text-gray-400">
-                      <svg className="w-16 h-16 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24"><path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
-                      <p className="text-sm mb-1">Your AI interviewer is ready</p>
-                      <p className="text-xs text-gray-300">Click the button below to begin</p>
+                    <div className="text-center max-w-sm">
+                      <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                        <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
+                      </div>
+                      <p className="text-base font-medium text-gray-700 mb-1">Your AI interviewer is ready</p>
+                      <p className="text-xs text-gray-400 mb-5">Choose your interviewer voice and click start</p>
+                      
+                      {/* Voice gender selector */}
+                      <div className="flex gap-3 justify-center mb-4">
+                        <button onClick={() => setVoiceGender("female")}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition border-2 ${voiceGender === "female" ? "border-pink-400 bg-pink-50 text-pink-700" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>
+                          <span className="text-lg">👩</span> Sarah (Female)
+                        </button>
+                        <button onClick={() => setVoiceGender("male")}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition border-2 ${voiceGender === "male" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>
+                          <span className="text-lg">👨</span> Alex (Male)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
