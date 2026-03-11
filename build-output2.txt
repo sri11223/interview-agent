@@ -1,0 +1,34 @@
+﻿   Γû▓ Next.js 15.2.4
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+node.exe : Failed to compile.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Failed to compile.:String) [], Re 
+   moteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+.next/types/app/interview/[interview_id]/completed/page.ts:2:24
+Type error: File 'D:/interview-agent/ai-interview-scheduler-ai-voice-agent/app/
+interview/[interview_id]/completed/page.jsx' is not a module.
+
+[0m [90m 1 |[39m [90m// File: D:\interview-agent\ai-interview-scheduler-ai-
+voice-agent\app\interview\[interview_id]\completed\page.jsx[39m[0m
+[0m[31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m [33m*[39m 
+[36mas[39m entry [36mfrom[39m [32m'../../../../../../app/interview/[interv
+iew_id]/completed/page.js'[39m[0m
+[0m [90m   |[39m                        [31m[1m^[22m[39m[0m
+[0m [90m 3 |[39m [36mimport[39m type { 
+[33mResolvingMetadata[39m[33m,[39m [33mResolvingViewport[39m } 
+[36mfrom[39m 
+[32m'next/dist/lib/metadata/types/metadata-interface.js'[39m[0m
+[0m [90m 4 |[39m[0m
+[0m [90m 5 |[39m type [33mTEntry[39m [33m=[39m [36mtypeof[39m [36mimp
+ort[39m([32m'../../../../../../app/interview/[interview_id]/completed/page.js
+'[39m)[0m
+Next.js build worker exited with code: 1 and signal: null

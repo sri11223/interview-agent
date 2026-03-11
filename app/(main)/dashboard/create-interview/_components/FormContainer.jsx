@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Input } from '@/components/ui/input'
+"use client"
+import React, { useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -9,51 +9,77 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Monitor, Brain, Code2, User2 } from 'lucide-react'
+import { Loader2, Play } from 'lucide-react'
 import { PracticeCategories, PracticeLanguages, DifficultyLevels } from '@/services/Constants'
+import { supabase } from '@/services/supabaseClient'
+import { useUser } from '@/app/provider'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
-const categoryDescriptions = {
-    'System Design': 'Practice system design interview questions covering scalability, microservices, databases, caching, load balancing, and distributed system concepts.',
-    'DSA': 'Practice Data Structures & Algorithms questions including arrays, linked lists, trees, graphs, dynamic programming, sorting, and searching.',
-    'Development': 'Practice web/app development questions covering frontend, backend, APIs, databases, deployment, and full-stack engineering concepts.',
-    'Behavioral': 'Practice behavioral and HR interview questions about teamwork, leadership, conflict resolution, and professional growth.',
-}
+function FormContainer({ initialCategory }) {
+    const router = useRouter()
+    const { user } = useUser()
+    const [selectedCategory, setSelectedCategory] = useState(initialCategory || '')
+    const [selectedLanguage, setSelectedLanguage] = useState('')
+    const [selectedDifficulty, setSelectedDifficulty] = useState('Intermediate')
+    const [duration, setDuration] = useState('')
+    const [topics, setTopics] = useState('')
+    const [loading, setLoading] = useState(false)
 
-function FormContainer({onHandleInputChange, GoToNext, initialCategory}) {
-    const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
-    const [selectedLanguage, setSelectedLanguage] = useState('');
-    const [selectedDifficulty, setSelectedDifficulty] = useState('');
-    const [interviewType, setInterviewType] = useState([]);
-
-    // Auto-fill when category is selected
-    useEffect(() => {
-        if (selectedCategory) {
-            onHandleInputChange('jobPosition', selectedCategory);
-            const desc = categoryDescriptions[selectedCategory] || '';
-            const langStr = selectedLanguage ? ` Focus on ${selectedLanguage} language.` : '';
-            const diffStr = selectedDifficulty ? ` Difficulty: ${selectedDifficulty}.` : '';
-            onHandleInputChange('jobDescription', desc + langStr + diffStr);
+    const handleStartInterview = async () => {
+        if (!selectedCategory) {
+            toast.error('Please select a practice category')
+            return
         }
-    }, [selectedCategory, selectedLanguage, selectedDifficulty]);
-
-    useEffect(() => {
-        if(interviewType.length > 0) {
-            onHandleInputChange('type', interviewType)
+        if (!duration) {
+            toast.error('Please select a session duration')
+            return
         }
-    }, [interviewType])
 
-    // Auto-set interview type based on category
-    useEffect(() => {
-        if (selectedCategory === 'System Design') {
-            setInterviewType(['Technical', 'Problem Solving']);
-        } else if (selectedCategory === 'DSA') {
-            setInterviewType(['Technical', 'Problem Solving']);
-        } else if (selectedCategory === 'Development') {
-            setInterviewType(['Technical']);
-        } else if (selectedCategory === 'Behavioral') {
-            setInterviewType(['Behavioral']);
+        setLoading(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.user) {
+                toast.error('Please login to start a practice session')
+                setLoading(false)
+                return
+            }
+
+            const currentUser = user || session.user
+            const interviewId = crypto.randomUUID()
+
+            let description = `Practice category: ${selectedCategory}.`
+            if (selectedLanguage) description += ` Programming language: ${selectedLanguage}.`
+            if (selectedDifficulty) description += ` Difficulty: ${selectedDifficulty}.`
+            if (topics) description += ` Focus topics: ${topics}.`
+
+            const interviewType = (selectedCategory === 'Behavioral') ? 'Behavioral' : 'Technical, Problem Solving'
+
+            const { error } = await supabase.from('Interviews').insert([{
+                interview_id: interviewId,
+                jobPosition: selectedCategory,
+                jobDescription: description,
+                duration: duration,
+                type: interviewType,
+                questionList: [],
+                userEmail: currentUser.email,
+            }])
+
+            if (error) {
+                console.error('Failed to create interview:', error)
+                toast.error(`Failed to create session: ${error.message}`)
+                setLoading(false)
+                return
+            }
+
+            const name = currentUser.user_metadata?.name || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Student'
+            router.push(`/interview/${interviewId}/start?name=${encodeURIComponent(name)}&email=${encodeURIComponent(currentUser.email)}`)
+        } catch (err) {
+            console.error('Error starting interview:', err)
+            toast.error('Something went wrong. Please try again.')
+            setLoading(false)
         }
-    }, [selectedCategory]);
+    }
 
     return (
         <div className='p-5 bg-white rounded-xl'>
@@ -128,20 +154,14 @@ function FormContainer({onHandleInputChange, GoToNext, initialCategory}) {
                 <Textarea 
                     placeholder='e.g., Focus on React hooks, REST APIs, binary trees...' 
                     className='h-[100px] mt-2'
-                    onChange={(event) => {
-                        const base = categoryDescriptions[selectedCategory] || '';
-                        const langStr = selectedLanguage ? ` Focus on ${selectedLanguage} language.` : '';
-                        const diffStr = selectedDifficulty ? ` Difficulty: ${selectedDifficulty}.` : '';
-                        const custom = event.target.value ? ` Additional focus: ${event.target.value}` : '';
-                        onHandleInputChange('jobDescription', base + langStr + diffStr + custom);
-                    }}
+                    onChange={(e) => setTopics(e.target.value)}
                 />
             </div>
 
             {/* Duration */}
             <div className='mt-5'>
                 <h2 className='text-sm font-medium'>Session Duration</h2>
-                <Select onValueChange={(value)=>onHandleInputChange('duration',value)}>
+                <Select onValueChange={(value) => setDuration(value)}>
                     <SelectTrigger className="w-full mt-2">
                         <SelectValue placeholder="Select Duration" />
                     </SelectTrigger>
@@ -155,10 +175,23 @@ function FormContainer({onHandleInputChange, GoToNext, initialCategory}) {
                 </Select>
             </div>
 
-            <div className='mt-8 flex-justify-end' onClick={()=>GoToNext()}>
-                <Button className='flex items-center gap-2 w-full justify-center'>
-                    Generate Practice Questions
-                    <ArrowRight className='h-4 w-4'/>
+            <div className='mt-8'>
+                <Button 
+                    className='flex items-center gap-2 w-full justify-center py-6 text-lg'
+                    onClick={handleStartInterview}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <>
+                            <Loader2 className='h-5 w-5 animate-spin'/>
+                            Starting Interview...
+                        </>
+                    ) : (
+                        <>
+                            <Play className='h-5 w-5'/>
+                            Start Interview
+                        </>
+                    )}
                 </Button>
             </div>
         </div>

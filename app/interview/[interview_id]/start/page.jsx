@@ -2,1233 +2,574 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import TimerComponent from "./_components/TimerComponent";
-import Vapi from "@vapi-ai/web";
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
-import "@tensorflow/tfjs"
+import "@tensorflow/tfjs";
 import { supabase } from "@/services/supabaseClient";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { startInterviewSession, completeInterviewSession, abandonInterviewSession } from "@/lib/interviewSessionUtils";
-import AutoPhotoSyncIndicator from "@/components/AutoPhotoSyncIndicator";
-
-// Vapi AI assistant options (dynamic)
-// Note: Using console.log instead of console.error to prevent Next.js webpack error interception
-
-function getAssistantOptions(userName, jobPosition, questionList) {
-  console.log("Creating assistant options with:", { userName, jobPosition, questionList });
-  
-  let questionsArr = [];
-  if (Array.isArray(questionList) && questionList.length > 0) {
-    if (typeof questionList[0] === "object" && questionList[0] !== null && questionList[0].question) {
-      questionsArr = questionList.map(q => q.question);
-    } else {
-      questionsArr = questionList;
-    }
-  } else if (questionList && typeof questionList === 'string') {
-    questionsArr = [questionList];
-  } else {
-    questionsArr = ["Tell me about yourself and your experience.", "What are your strengths?", "Why do you want this position?"];
-  }
-  
-  const systemPrompt = `You are a friendly AI interview coach helping a student named ${userName || "Student"} practice for ${jobPosition || "technical"} interviews.
-
-IMPORTANT: You MUST start the conversation immediately by asking the first question. Do not wait for the student to speak first.
-
-Your practice questions are:
-${questionsArr.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-
-Interview Process:
-1. Start with a friendly greeting and immediately ask the first question
-2. Listen to the student's response
-3. Provide brief encouraging feedback ("Great answer!", "That's a good approach", "Think about it from another angle")
-4. Move to the next question
-5. Ask follow-up questions when the answer needs more depth
-6. After covering the main questions, wrap up the practice session
-
-Guidelines:
-- Be encouraging and supportive - this is practice!
-- Keep responses short and conversational
-- Give hints if the student is stuck
-- Ask one question at a time
-- Provide constructive feedback
-- Keep the session flowing naturally
-
-Start the practice now by greeting the student and asking the first question immediately.`;
-
-  return {
-    name: "AI Interview Coach",
-    firstMessage: `Hey ${userName || "there"}! Welcome to your ${jobPosition || "interview"} practice session. I'm your AI interview coach, and I'll help you prepare. Let's dive in! ${questionsArr[0] || "Tell me about yourself."}`,
-    transcriber: {
-      provider: "deepgram",
-      model: "nova-2",
-      language: "en-US",
-    },
-    voice: {
-      provider: "playht",
-      voiceId: "jennifer",
-    },
-    model: {
-      provider: "openai",
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        }
-      ],
-      temperature: 0.7,
-      maxTokens: 250
-    },
-    endCallMessage: "Great practice session! You did well. Check your feedback to see areas to improve. Keep practicing!",
-    recordingEnabled: false,
-    silenceTimeoutSeconds: 30,
-    maxDurationSeconds: 1800
-  };
-}
 
 export default function InterviewSession({ params }) {
-  // Unwrap params Promise for Next.js App Router
   const { interview_id } = React.use(params);
+  const router = useRouter();
 
-  // Extract URL parameters for candidate name and email
+  // --- State ---
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
-  
-  useEffect(() => {
-    // Extract URL parameters on client side
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const nameParam = urlParams.get('name') || "";
-      const emailParam = urlParams.get('email') || "";
-      
-      console.log("📧 URL Parameters extracted:", { nameParam, emailParam });
-      setCandidateName(nameParam);
-      setCandidateEmail(emailParam);
-    }
-  }, []);
+  const [interview, setInterview] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Feedback generation hooks and logic must be inside the component
+  // Conversation
+  const [messages, setMessages] = useState([]);
+  const [conversation, setConversation] = useState("");
+  const [questionCount, setQuestionCount] = useState(0);
+
+  // AI / Speech
+  const [aiThinking, setAiThinking] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [userTranscript, setUserTranscript] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  // Interview flow
+  const [interviewStarted, setInterviewStarted] = useState(false);
+  const [interviewEnded, setInterviewEnded] = useState(false);
+  const [endReason, setEndReason] = useState("");
+  const [timerActive, setTimerActive] = useState(false);
+
+  // Proctoring
+  const [objectWarningCount, setObjectWarningCount] = useState(0);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [objectWarning, setObjectWarning] = useState("");
+  const [tabSwitchWarning, setTabSwitchWarning] = useState("");
+  const [cameraError, setCameraError] = useState("");
+
+  // Feedback
   const [feedback, setFeedback] = useState(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackSaved, setFeedbackSaved] = useState(false);
-  // Conversation tracking for feedback generation
-  const [conversation, setConversation] = useState("");
-  const [conversationMessages, setConversationMessages] = useState([]);
-  // Session tracking
-  const [sessionId, setSessionId] = useState(null);
-  // Ref to prevent multiple feedback generation calls
   const feedbackGenerationRef = useRef(false);
 
-  // Generate and save feedback to Supabase (improved duplicate prevention)
-  const GenerateAndSaveFeedback = async () => {
-    if (!conversation || conversation.trim() === "") {
-      setFeedbackError("No conversation data available for feedback generation");
-      return;
-    }
-
-    // Prevent multiple simultaneous calls using ref
-    if (feedbackLoading || feedbackSaved || feedbackGenerationRef.current) {
-      console.log("⚠️ Feedback already being generated or saved, skipping...");
-      return;
-    }
-
-    feedbackGenerationRef.current = true; // Set flag
-    setFeedbackLoading(true);
-    setFeedbackError("");
-    
-    try {
-      // First check if feedback already exists for this interview and candidate
-      console.log("🔍 Checking for existing feedback...");
-      const { data: existingFeedback, error: checkError } = await supabase
-        .from('interview-feedback')
-        .select('*')
-        .eq('interview_id', interview_id)
-        .eq('userEmail', candidateEmail || interview?.userEmail || 'candidate@example.com')
-        .eq('userName', candidateName || interview?.userName || 'Interview Candidate');
-
-      if (checkError) {
-        console.log("❌ Error checking existing feedback:", checkError);
-      } else if (existingFeedback && existingFeedback.length > 0) {
-        console.log("✅ Feedback already exists, skipping generation");
-        setFeedbackSaved(true);
-        setFeedback({ feedback: existingFeedback[0].feedback }); // Set the existing feedback
-        setFeedbackError("Feedback already generated for this interview session");
-        setFeedbackLoading(false);
-        return;
-      }
-
-      console.log("Generating feedback for conversation:", conversation.substring(0, 100) + "...");
-      
-      const requestData = { 
-        conversation,
-        interview_id,
-        jobPosition: interview?.jobPosition || "Software Developer"
-      };
-      
-      console.log("Making API request to /api/ai-feedback");
-      let result;
-      let feedbackData;
-      
-      try {
-        result = await axios.post("/api/ai-feedback", requestData);
-        console.log("API Response received:", result.data);
-        
-        if (result.data && result.data.success && result.data.feedback) {
-          feedbackData = result.data;
-        } else {
-          throw new Error("Invalid API response format");
-        }
-      } catch (apiError) {
-        console.log("❌ AI API failed, using local fallback:", apiError.message);
-        
-        // Generate GENUINE feedback based on actual performance and completion
-        const conversationLength = conversation.length;
-        const responseCount = (conversation.match(/User:|Assistant:/gi) || []).length;
-        const totalQuestions = interview?.questionList?.length || 5;
-        
-        // Calculate interview completion percentage
-        const expectedResponseCount = totalQuestions * 2; // User + AI responses per question
-        const completionPercentage = Math.min(100, (responseCount / expectedResponseCount) * 100);
-        
-        // Analyze malpractice violations
-        const hasMalpractice = tabSwitchCount > 0 || objectWarningCount > 0;
-        const malpracticeScore = Math.max(0, 10 - (tabSwitchCount * 2) - (objectWarningCount * 1.5));
-        
-        // Base scores on actual conversation quality and completion
-        let baseScores = {
-          technicalSkills: Math.max(1, Math.round((conversationLength / 500) * (completionPercentage / 100) * 8)),
-          communication: Math.max(1, Math.round((responseCount / 10) * (completionPercentage / 100) * 8)),
-          problemSolving: Math.max(1, Math.round((conversationLength / 400) * (completionPercentage / 100) * 7)),
-          experience: Math.max(1, Math.round((conversationLength / 600) * (completionPercentage / 100) * 7))
-        };
-        
-        // Apply malpractice penalties
-        Object.keys(baseScores).forEach(key => {
-          if (hasMalpractice) {
-            baseScores[key] = Math.max(1, Math.round(baseScores[key] * (malpracticeScore / 10)));
-          }
-          baseScores[key] = Math.min(10, baseScores[key]); // Cap at 10
-        });
-        
-        const avgScore = Object.values(baseScores).reduce((a, b) => a + b, 0) / 4;
-        
-        // Genuine recommendation based on completion and performance
-        let recommendation = "Not Recommended";
-        let recommendationMsg = "Candidate needs significant improvement";
-        
-        if (completionPercentage < 50) {
-          recommendation = "Not Recommended";
-          recommendationMsg = "Interview was not completed. Cannot make hiring decision based on incomplete assessment.";
-        } else if (hasMalpractice && avgScore < 6) {
-          recommendation = "Not Recommended";
-          recommendationMsg = `Malpractice detected (${tabSwitchCount} tab switches, ${objectWarningCount} violations). Poor performance combined with integrity concerns.`;
-        } else if (hasMalpractice) {
-          recommendation = "Further Review";
-          recommendationMsg = `Good performance but malpractice detected (${tabSwitchCount} tab switches, ${objectWarningCount} violations). Requires additional evaluation.`;
-        } else if (avgScore >= 8 && completionPercentage >= 80) {
-          recommendation = "Hire";
-          recommendationMsg = "Excellent performance with complete interview and no integrity issues.";
-        } else if (avgScore >= 6 && completionPercentage >= 70) {
-          recommendation = "Further Review";
-          recommendationMsg = "Good performance but requires additional assessment to confirm capabilities.";
-        }
-        
-        feedbackData = {
-          feedback: {
-            rating: baseScores,
-            summary: `Interview completion: ${completionPercentage.toFixed(1)}%. ${hasMalpractice ? 'Integrity concerns detected.' : 'No integrity issues found.'} Performance assessment based on actual conversation quality and completion rate.`,
-            Recommendation: recommendation,
-            RecommendationMsg: recommendationMsg,
-            interviewCompletion: completionPercentage,
-            malpracticeDetected: hasMalpractice,
-            malpracticeDetails: {
-              tabSwitches: tabSwitchCount,
-              objectDetections: objectWarningCount,
-              integrityScore: malpracticeScore
-            }
-          },
-          success: true,
-          fallback: true
-        };
-        
-        console.log("✅ Genuine feedback generated:", feedbackData);
-      }
-      
-      if (feedbackData && feedbackData.success && feedbackData.feedback) {
-        console.log("Feedback generated successfully:", feedbackData);
-        
-        setFeedback(feedbackData);
-        
-        // Save to Supabase interview-feedback table with photo columns only
-        // Your table columns: id (auto), interview_id, userEmail, feedback (json), candidate_photo_url, photo_status
-        const feedbackRecord = {
-          interview_id: interview_id,
-          userEmail: candidateEmail || interview?.userEmail || 'candidate@example.com',
-          userName: candidateName || interview?.userName || 'Interview Candidate',
-          candidate_photo_url: null, // Will be updated when photo is captured
-          photo_status: 'pending', // pending, completed, failed
-          feedback: {
-            rating: feedbackData.feedback?.rating || {
-              technicalSkills: 1,
-              communication: 1, 
-              problemSolving: 1,
-              experience: 1
-            },
-            summary: feedbackData.feedback?.summary || 'Interview assessment completed',
-            recommendation: feedbackData.feedback?.Recommendation || feedbackData.recommendation || 'Not Recommended',
-            interviewCompletion: feedbackData.feedback?.interviewCompletion || 0,
-            malpracticeDetected: feedbackData.feedback?.malpracticeDetected || false,
-            malpracticeDetails: feedbackData.feedback?.malpracticeDetails || {
-              tabSwitches: tabSwitchCount,
-              objectDetections: objectWarningCount,
-              integrityScore: 10
-            },
-            conversation: conversation, // Store conversation inside feedback JSON
-            metadata: {
-              endReason: endReason || 'Completed normally',
-              objectWarningCount: objectWarningCount,
-              tabSwitchCount: tabSwitchCount,
-              timestamp: new Date().toISOString(),
-              conversationLength: conversationMessages.length,
-              interviewDuration: interview?.duration || 'Unknown',
-              totalQuestions: interview?.questionList?.length || 0,
-              userAgent: navigator.userAgent
-            }
-          }
-        };
-
-        console.log("💾 Saving feedback record to database:", feedbackRecord);
-
-        // Test database connection first
-        console.log("🔍 Testing database connection...");
-        const { data: testData, error: testError } = await supabase
-          .from('interview-feedback')
-          .select('count', { count: 'exact', head: true });
-        
-        if (testError) {
-          console.log("❌ Database connection test failed:", testError);
-          throw new Error(`Database connection error: ${testError.message}`);
-        }
-        
-        console.log("✅ Database connection successful. Current record count:", testData);
-
-        // Try simple insert first, then handle duplicates
-        console.log("💾 Attempting to insert feedback record...");
-        const { data, error } = await supabase
-          .from('interview-feedback')
-          .insert(feedbackRecord)
-          .select();
-
-        if (error) {
-          console.log('❌ Supabase error saving feedback:', error);
-          
-          // If it's a duplicate error, try to update existing record
-          if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
-            console.log("🔄 Duplicate detected, attempting to update existing record...");
-            
-            const { data: updateData, error: updateError } = await supabase
-              .from('interview-feedback')
-              .update({ feedback: feedbackRecord.feedback })
-              .eq('interview_id', interview_id)
-              .eq('userEmail', feedbackRecord.userEmail)
-              .eq('userName', feedbackRecord.userName)
-              .select();
-            
-            if (updateError) {
-              console.log('❌ Update failed:', updateError);
-              throw new Error(`Database update error: ${updateError.message}`);
-            }
-            
-            console.log('✅ Feedback updated successfully:', updateData);
-          } else {
-            throw new Error(`Database error: ${error.message}`);
-          }
-        } else {
-          console.log('✅ Feedback inserted successfully:', data);
-        }
-
-        console.log('✅ Feedback saved to database successfully:', data);
-        setFeedbackSaved(true);
-        
-        // Verify the record was actually saved
-        console.log("🔍 Verifying saved record...");
-        const { data: verifyData, error: verifyError } = await supabase
-          .from('interview-feedback')
-          .select('*')
-          .eq('interview_id', interview_id)
-          .eq('userEmail', feedbackRecord.userEmail);
-        
-        if (verifyError) {
-          console.log('⚠️ Verification failed:', verifyError);
-        } else {
-          console.log('✅ Verification successful. Found records:', verifyData?.length || 0);
-          console.log('📄 Record details:', verifyData);
-        }
-      } else {
-        console.log('⚠️ No feedback data received');
-        throw new Error("No feedback data received from AI service");
-      }
-    } catch (e) {
-      // Using console.log instead of console.error to prevent Next.js webpack error interception
-      console.log('❌ Error generating or saving feedback:', {
-        error: e,
-        message: e.message,
-        response: e.response?.data,
-        status: e.response?.status
-      });
-      
-      // More specific error messages
-      let errorMessage = "Error generating feedback";
-      
-      if (e.response) {
-        const status = e.response.status;
-        const responseData = e.response.data;
-        
-        if (status === 500) {
-          errorMessage = `Server Error: ${responseData?.error || responseData?.message || 'Internal server error'}`;
-        } else if (status === 400) {
-          errorMessage = `Invalid Request: ${responseData?.error || 'Bad request'}`;
-        } else if (status === 401) {
-          errorMessage = `Authentication Error: ${responseData?.error || 'Unauthorized'}`;
-        } else {
-          errorMessage = `API Error (${status}): ${responseData?.error || responseData?.message || e.message}`;
-        }
-      } else if (e.message?.includes('Network Error')) {
-        errorMessage = "Network error: Please check your internet connection";
-      } else if (e.message) {
-        errorMessage = e.message;
-      }
-      
-      setFeedbackError(errorMessage);
-      throw e; // Re-throw for the calling code to handle
-    } finally {
-      setFeedbackLoading(false);
-      feedbackGenerationRef.current = false; // Reset flag
-    }
-  };
-
-  // Legacy function for backward compatibility
-  const GenerateFeedback = GenerateAndSaveFeedback;
-  // State
-  const [objectWarningCount, setObjectWarningCount] = useState(0);
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  const [interviewEnded, setInterviewEnded] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const [cameraError, setCameraError] = useState("");
-  const [objectWarning, setObjectWarning] = useState("");
-  const [tabSwitchWarning, setTabSwitchWarning] = useState("");
-  const [interview, setInterview] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [endReason, setEndReason] = useState("");
-  const [timerActive, setTimerActive] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const router = useRouter();
-
-  // Suppress Daily.co console errors and handle meeting end gracefully
-  useEffect(() => {
-    const originalError = console.error;
-    
-    // Override console.error to filter Daily.co errors
-    console.error = (...args) => {
-      const message = args.join(' ');
-      // Suppress Daily.co meeting ended errors
-      if (message.includes('Meeting ended due to ejection') || 
-          message.includes('Meeting has ended') ||
-          message.includes('daily-js') ||
-          message.includes('daily-esm')) {
-        console.log('📞 Interview session ended normally (Daily.co)');
-        return; // Don't log these errors
-      }
-      originalError.apply(console, args);
-    };
-    
-    return () => {
-      console.error = originalError;
-    };
-  }, []);
-
   // Refs
-  const vapiRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const messagesRef = useRef([]);
+  const silenceTimerRef = useRef(null);
+  const interviewEndedRef = useRef(false);
+  const scrollRef = useRef(null);
 
-  // --- Vapi AI Setup ---
-  const [vapiStarted, setVapiStarted] = useState(false);
+  // Keep refs in sync
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { interviewEndedRef.current = interviewEnded; }, [interviewEnded]);
 
-  // Validate VAPI API key format and basic connectivity
-  const validateVapiKey = async (apiKey) => {
-    if (!apiKey) {
-      throw new Error("VAPI API key is missing. Please check your .env.local file.");
-    }
-    
-    if (apiKey.length < 10) {
-      throw new Error("VAPI API key appears to be invalid (too short). Please verify your API key.");
-    }
-    
-    // Check if API key has proper format (usually starts with specific prefix)
-    if (!apiKey.startsWith('vapi_') && !apiKey.includes('-')) {
-      throw new Error("VAPI API key format appears incorrect. Please check your API key.");
-    }
-    
-    // Try creating a basic Vapi instance to test the key
-    try {
-      const testVapi = new Vapi(apiKey);
-      console.log("✅ VAPI instance created successfully with provided key");
-      return true;
-    } catch (error) {
-      console.log("❌ Failed to create VAPI instance:", error);
-      
-      // Provide specific error messages based on error type
-      if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
-        throw new Error("VAPI API key is invalid or expired. Please check your API key and account status.");
-      } else if (error.message?.includes('insufficient') || error.message?.includes('credits')) {
-        throw new Error("VAPI account has insufficient credits. Please add credits to your VAPI account.");
-      } else if (error.message?.includes('network') || error.message?.includes('connection')) {
-        throw new Error("Network error connecting to VAPI. Please check your internet connection.");
-      } else {
-        throw new Error(`VAPI initialization failed: ${error.message || 'Unknown error'}. Please check your API key and account credits.`);
-      }
-    }
-  };
-
-  // Start Vapi and timer only after questions and interview are loaded
-  const startVapi = async (qs) => {
-    console.log("🚀 === VAPI STARTUP PROCESS ===");
-    
-    if (vapiRef.current || vapiStarted) {
-      console.log("⚠️ VAPI already started or starting");
-      return;
-    }
-    
-    setAiError("");
-    
-    // Debug: Check if API key exists
-    console.log("🔑 Vapi API Key:", process.env.NEXT_PUBLIC_VAPI_API_KEY ? "Present (" + process.env.NEXT_PUBLIC_VAPI_API_KEY.substring(0, 8) + "...)" : "❌ Missing");
-    console.log("📊 Questions passed:", qs);
-    console.log("🎯 Interview data:", interview);
-    console.log("📝 Questions length:", qs?.length || 0);
-    
-    const apiKey = process.env.NEXT_PUBLIC_VAPI_API_KEY;
-    if (!apiKey) {
-      const error = "❌ VAPI API key is missing. Please check your .env.local file.";
-      console.log(error);
-      setAiError(error);
-      return;
-    }
-    
-    // Basic API key validation
-    if (apiKey.length < 20) {
-      const error = "❌ VAPI API key appears to be invalid (too short). Please check your .env.local file.";
-      console.log(error);
-      setAiError(error);
-      return;
-    }
-    
-    if (!qs || qs.length === 0) {
-      const error = "❌ No interview questions available. Please check your interview setup.";
-      console.log(error);
-      setAiError(error);
-      return;
-    }
-    
-    try {
-      // Enhanced API key validation
-      console.log("🔐 Validating VAPI API key...");
-      try {
-        await validateVapiKey(apiKey);
-        console.log("✅ VAPI API key validation passed");
-      } catch (validationError) {
-        console.error("❌ VAPI API key validation failed:", validationError.message);
-        setAiError(`🔐 API Configuration Issue: ${validationError.message}. Please contact support if this issue persists.`);
-        return;
-      }
-      
-      console.log("🎤 Requesting microphone access...");
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log("✅ Microphone access granted");
-      } catch (micError) {
-        console.error("❌ Microphone access failed:", micError.message);
-        setAiError(`🎤 Microphone Access Required: Please allow microphone access and refresh the page to start the interview.`);
-        return;
-      }
-      
-      console.log("🤖 Creating VAPI instance...");
-      let vapi;
-      try {
-        vapi = new Vapi(apiKey);
-        console.log("✅ VAPI instance created successfully");
-      } catch (vapiError) {
-        console.error("❌ VAPI instance creation failed:", vapiError.message);
-        setAiError(`🤖 Interview System Initialization Failed: Unable to initialize the AI interview system. Please try refreshing the page.`);
-        return;
-      }
-      vapiRef.current = vapi;
-      
-      console.log("📞 Setting up VAPI event listeners...");
-      vapi.on("speech-start", () => {
-        console.log("🗣️ AI started speaking");
-        setIsSpeaking(true);
-      });
-      
-      vapi.on("speech-end", () => {
-        console.log("🤫 AI stopped speaking");
-        setIsSpeaking(false);
-      });
-      vapi.on("error", (err) => {
-        // Avoid logging empty error objects to prevent webpack errors
-        const hasContent = err && (err.message || Object.keys(err).length > 0);
-        
-        // Handle Daily.co meeting ended errors gracefully
-        if (err?.message && (err.message.includes("Meeting ended") || err.message.includes("Meeting has ended") || err.message.includes("ejection"))) {
-          console.log("📞 Interview session ended normally (VAPI detected Daily.co end)");
-          setInterviewEnded(true);
-          setIsSpeaking(false);
-          endVapi();
-          return; // Don't show error for normal session end
-        }
-        
-        if (hasContent) {
-          console.log("❌ VAPI Error received:", {
-            error: err,
-            type: typeof err,
-            keys: Object.keys(err),
-            stringified: JSON.stringify(err)
-          });
-        } else {
-          console.log("⚠️ VAPI emitted empty error object - likely API key or credits issue");
-        }
-        
-        // Parse error message for specific issues
-        let errorMessage = "VAPI connection failed";
-        
-        if (err?.message) {
-          if (err.message.includes("Wallet Balance is") || err.message.includes("Purchase More Credits")) {
-            errorMessage = "⚠️ VAPI Account Issue: Insufficient credits. Please add credits to your VAPI account to continue.";
-          } else if (err.message.includes("Unauthorized") || err.message.includes("Invalid API key")) {
-            errorMessage = "❌ Invalid VAPI API key. Please check your .env.local file.";
-          } else {
-            errorMessage = `VAPI Error: ${err.message}`;
-          }
-        } else if (err?.type === "start-method-error") {
-          errorMessage = "🔧 Interview System Temporarily Unavailable: Our AI interview system is currently experiencing technical difficulties. This could be due to server maintenance or high demand. Please try refreshing the page in a few minutes, or contact support if the issue persists.";
-        } else if (err && Object.keys(err).length > 0) {
-          const errStr = JSON.stringify(err);
-          if (errStr.includes("Wallet Balance") || errStr.includes("Purchase More Credits")) {
-            errorMessage = "⚠️ VAPI Account Issue: Insufficient credits. Please add credits to your VAPI account to continue.";
-          } else {
-            errorMessage = `VAPI Error: ${errStr}`;
-          }
-        } else {
-          // Empty error object - likely API key or credits issue
-          errorMessage = "🔧 Interview System Connection Error: We're unable to connect to our AI interview system right now. This is typically a temporary issue. Please try refreshing the page (Ctrl+Shift+R) or wait a few minutes and try again. If the problem continues, please contact our technical support team.";
-        }
-        
-        console.log("💬 Setting error message:", errorMessage);
-        setAiError(errorMessage);
-        setIsSpeaking(false);
-      });
-      vapi.on("message", (message) => {
-        console.log("📩 VAPI Message:", message);
-        if (message.type === 'transcript') {
-          console.log(`${message.role}: ${message.transcript}`);
-          
-          // Track conversation for feedback generation
-          const timestamp = new Date().toLocaleTimeString();
-          const newMessage = {
-            role: message.role,
-            transcript: message.transcript,
-            timestamp: timestamp
-          };
-          
-          setConversationMessages(prev => [...prev, newMessage]);
-          setConversation(prev => prev + `\n[${timestamp}] ${message.role}: ${message.transcript}`);
-          
-          console.log("💬 Updated conversation length:", conversationMessages.length + 1);
-        }
-      });
-      
-      vapi.on("call-start", () => {
-        console.log("📞 VAPI Call started");
-        setIsSpeaking(false);
-      });
-      
-      vapi.on("call-end", () => {
-        console.log("📞 VAPI Call ended");
-        console.log("📝 Final conversation length:", conversationMessages.length);
-        console.log("💬 Final conversation:", conversation);
-        setIsSpeaking(false);
-        setEndReason("Interview completed successfully");
-        setInterviewEnded(true);
-      });
-      // Create VAPI options
-      const userName = candidateName || interview?.userName || "candidate";
-      const jobPosition = interview?.jobPosition || "Software Developer";
-      const options = getAssistantOptions(userName, jobPosition, qs || questions);
-      
-      console.log("🚀 Starting VAPI call...");
-      console.log("⚙️ Options:", { userName, jobPosition, questionsCount: qs?.length });
-      
-      // Validate options
-      if (!options.firstMessage) {
-        throw new Error("Missing firstMessage in VAPI options");
-      }
-      
-      // Start VAPI
-      await vapi.start(options);
-      console.log("✅ VAPI started successfully!");
-      
-      setVapiStarted(true);
-      setTimerActive(true);
-      
-      // Start session tracking
-      const session = await startInterviewSession(supabase, interview_id);
-      if (session) {
-        setSessionId(session.id);
-        console.log("📊 Session tracking started:", session.id);
-      }
-    } catch (err) {
-      // Using console.log instead of console.error to prevent Next.js webpack error interception
-      console.log("🔥 VAPI Start Error:", {
-        error: err,
-        errorMessage: err?.message,
-        errorType: typeof err,
-        errorStack: err?.stack,
-        errorKeys: err ? Object.keys(err) : [],
-        stringified: JSON.stringify(err, Object.getOwnPropertyNames(err))
-      });
-      
-      let errorMessage = "";
-      
-      if (err?.name === "NotAllowedError" || err?.message?.includes("microphone") || err?.message?.includes("permission")) {
-        errorMessage = "Microphone access denied. Please allow microphone permissions and try again.";
-      } else if (err?.message?.includes("Invalid API key") || err?.message?.includes("Unauthorized")) {
-        errorMessage = "Invalid VAPI API key. Please check your .env.local file and restart the server.";
-      } else if (err?.message?.includes("network") || err?.message?.includes("fetch")) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (err?.message) {
-        errorMessage = "VAPI Error: " + err.message;
-      } else {
-        errorMessage = "Failed to start interview. Please refresh the page and try again.";
-      }
-      
-      setAiError(errorMessage);
-      setIsSpeaking(false);
-      setVapiStarted(false);
-      setTimerActive(false);
-    }
-  };
-
-  // Automatically start Vapi when questions and interview are loaded
+  // Auto-scroll conversation
   useEffect(() => {
-    if (
-      questions && questions.length > 0 &&
-      interview &&
-      !vapiStarted &&
-      !interviewEnded &&
-      !aiError  // Don't auto-start if there's already an error
-    ) {
-      console.log("Auto-starting VAPI: questions and interview loaded");
-      
-      // Add a small delay to ensure everything is properly loaded
-      const startTimer = setTimeout(() => {
-        startVapi(questions);
-      }, 1000);
-      
-      return () => clearTimeout(startTimer);
-    }
-  }, [questions, interview, vapiStarted, interviewEnded, aiError]);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, userTranscript, aiThinking]);
 
-  const endVapi = useCallback(() => {
-    if (vapiRef.current) {
-      vapiRef.current.stop();
-      vapiRef.current = null;
-      setIsSpeaking(false);
-      setTimerActive(false);
-      setVapiStarted(false);
+  // --- Extract URL params ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      setCandidateName(p.get("name") || "");
+      setCandidateEmail(p.get("email") || "");
     }
   }, []);
 
-  // Stop Vapi if interview ends and automatically generate feedback
+  // --- Check Speech Support ---
   useEffect(() => {
-    if (interviewEnded) {
-      endVapi();
-      
-      // Track session completion and generate feedback
-      if (endReason && endReason.includes("completed") || endReason.includes("Time is up")) {
-        // Mark session as completed
-        completeInterviewSession(supabase, interview_id);
-      } else if (endReason) {
-        // Mark session as abandoned with reason
-        abandonInterviewSession(supabase, interview_id, endReason);
-      }
-      
-      // Automatically generate and save feedback when interview ends (with duplicate prevention)
-      if (conversation && conversation.trim() !== "" && !feedback && !feedbackLoading && !feedbackSaved && !feedbackGenerationRef.current) {
-        console.log("🎯 Interview ended - Auto-generating feedback...");
-        
-        const generateFeedback = async () => {
-          try {
-            await GenerateAndSaveFeedback();
-          } catch (error) {
-            console.log("❌ Auto-feedback generation failed:", error);
-          }
-        };
-        
-        setTimeout(generateFeedback, 2000); // Wait 2 seconds to ensure conversation is complete
+    if (typeof window !== "undefined") {
+      const hasSynth = "speechSynthesis" in window;
+      const hasRecog = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+      if (!hasSynth || !hasRecog) {
+        setSpeechSupported(false);
+        setAiError("Your browser doesn't support voice. Please use Google Chrome or Microsoft Edge.");
       }
     }
-  }, [interviewEnded, conversation, feedback, feedbackLoading]);
-
-  // Improved error handling for Daily.co meeting end
-  useEffect(() => {
-    if (aiError && typeof aiError === "string" && (
-      aiError.includes("Meeting has ended") || 
-      aiError.includes("Meeting ended due to ejection") ||
-      aiError.includes("daily-js") ||
-      aiError.includes("daily-esm")
-    )) {
-      console.log("📞 Interview session ended normally - clearing Daily.co error");
-      setAiError(""); // Clear the error instead of showing a message
-      setInterviewEnded(true);
-      endVapi();
-    }
-  }, [aiError, endVapi]);
-
-  // Proctoring: tab switch detection
-  useEffect(() => {
-    function handleVisibilityChange() {
-      if (document.visibilityState === "hidden") {
-        setTabSwitchCount((prev) => {
-          const next = prev + 1;
-          setTabSwitchWarning(`Tab switching detected! Warning ${next}/3`);
-          setTimeout(() => setTabSwitchWarning(""), 2000);
-          if (next >= 3) {
-            setEndReason("Interview stopped: Tab switching detected 3 times.");
-            setInterviewEnded(true);
-            endVapi();
-          }
-          return next;
-        });
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, []);
 
-  // Redirect after interview ends
-  useEffect(() => {
-    if (interviewEnded) {
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 5000);
-    }
-  }, [interviewEnded, router]);
-
-  // Camera and proctoring logic
-  useEffect(() => {
-    let isMounted = true;
-    let intervalId;
-    let model;
-    async function startCameraAndDetection() {
-      setCameraError("");
-      setObjectWarning("");
-      try {
-        model = await cocoSsd.load();
-      } catch (err) {
-        setCameraError("Failed to load object detection model: " + err.message);
-        return;
-      }
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      } catch (err) {
-        setCameraError("Unable to access camera: " + err.message);
-        return;
-      }
-      if (!isMounted) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      streamRef.current = stream;
-      const attachStream = () => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        } else {
-          setTimeout(attachStream, 100);
-        }
-      };
-      attachStream();
-      intervalId = setInterval(async () => {
-        if (videoRef.current && videoRef.current.readyState === 4) {
-          try {
-            const predictions = await model.detect(videoRef.current);
-            let personCount = 0;
-            let phoneDetected = false;
-            let bookDetected = false;
-            predictions.forEach((pred) => {
-              if (pred.class === "person" && pred.score > 0.7) personCount++;
-              if (pred.class === "cell phone") phoneDetected = true;
-              if (pred.class === "book") bookDetected = true;
-            });
-            if (personCount > 1) {
-              setObjectWarning("Multiple persons detected! Interview will be stopped.");
-              setEndReason("Interview stopped: Multiple persons detected.");
-              setInterviewEnded(true);
-              endVapi();
-            } else if (phoneDetected && bookDetected) {
-              setObjectWarning("Multiple objects (mobile phone and book) detected! Interview will be stopped.");
-              setEndReason("Interview stopped: Mobile phone and book detected together.");
-              setInterviewEnded(true);
-              endVapi();
-            } else if (phoneDetected) {
-              setObjectWarning(`Mobile phone detected! Please remove it from view. Warning ${objectWarningCount + 1}/3`);
-              setObjectWarningCount((prev) => {
-                const next = prev + 1;
-                if (next >= 3) {
-                  setEndReason("Interview stopped: Mobile phone detected 3 times.");
-                  setInterviewEnded(true);
-                  endVapi();
-                }
-                return next;
-              });
-            } else if (bookDetected) {
-              setObjectWarning(`Book detected! Please remove it from view. Warning ${objectWarningCount + 1}/3`);
-              setObjectWarningCount((prev) => {
-                const next = prev + 1;
-                if (next >= 3) {
-                  setEndReason("Interview stopped: Book detected 3 times.");
-                  setInterviewEnded(true);
-                  endVapi();
-                }
-                return next;
-              });
-            } else {
-              setObjectWarning("");
-            }
-          } catch (e) {
-            setObjectWarning("Object detection error: " + e.message);
-          }
-        }
-      }, 1000);
-    }
-    startCameraAndDetection();
-    return () => {
-      isMounted = false;
-      if (intervalId) clearInterval(intervalId);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-    };
-    // eslint-disable-next-line
-  }, [router]);
-
-  // Fetch interview data and questions
+  // --- Fetch interview ---
   useEffect(() => {
     async function fetchInterview() {
       setLoading(true);
-      console.log("📊 Fetching interview data for ID:", interview_id);
-      
       const { data, error } = await supabase
         .from("Interviews")
-        .select("*") // Select all fields for complete interview information
+        .select("*")
         .eq("interview_id", interview_id)
         .single();
-      
       if (error) {
-        console.error("❌ Error fetching interview:", error);
-        setAiError("Failed to load interview data");
+        setAiError("Failed to load interview. Please go back and try again.");
       } else {
-        console.log("✅ Interview data loaded:", data);
         setInterview(data);
-        setQuestions(data?.questionList || []);
       }
-      
       setLoading(false);
     }
     fetchInterview();
   }, [interview_id]);
 
-  // --- Stop Vapi only on proctoring or tab switch ---
-  useEffect(() => {
-    if (interviewEnded) {
-      endVapi();
+  // --- Speech Synthesis (AI speaks) ---
+  const speak = useCallback((text) => {
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) { resolve(); return; }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) ||
+                        voices.find(v => v.lang.startsWith("en-US")) ||
+                        voices.find(v => v.lang.startsWith("en"));
+      if (preferred) utterance.voice = preferred;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => { setIsSpeaking(false); resolve(); };
+      utterance.onerror = () => { setIsSpeaking(false); resolve(); };
+      window.speechSynthesis.speak(utterance);
+    });
+  }, []);
+
+  // --- Speech Recognition (listen to student) ---
+  const startListening = useCallback(() => {
+    if (interviewEndedRef.current) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch {} }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let finalTranscript = "";
+    let lastSpeechTime = Date.now();
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setUserTranscript("");
+      finalTranscript = "";
+      lastSpeechTime = Date.now();
+      if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+      silenceTimerRef.current = setInterval(() => {
+        if (Date.now() - lastSpeechTime > 8000 && finalTranscript.trim()) {
+          clearInterval(silenceTimerRef.current);
+          recognition.stop();
+        }
+      }, 1000);
+    };
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) { finalTranscript += t + " "; lastSpeechTime = Date.now(); }
+        else interim = t;
+      }
+      setUserTranscript(finalTranscript + interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+      const answer = finalTranscript.trim();
+      if (answer && !interviewEndedRef.current) processStudentAnswer(answer);
+      else if (!interviewEndedRef.current) setTimeout(() => startListening(), 500);
+    };
+
+    recognition.onerror = (e) => {
+      setIsListening(false);
+      if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+      if (e.error === "no-speech") {
+        if (!interviewEndedRef.current) setTimeout(() => startListening(), 500);
+      } else if (e.error === "not-allowed") {
+        setAiError("Microphone access denied. Please allow mic and refresh.");
+      }
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+  }, []);
+
+  // --- Process answer & get AI response ---
+  const processStudentAnswer = useCallback(async (answer) => {
+    if (interviewEndedRef.current) return;
+    const userMsg = { role: "user", content: answer };
+    const updated = [...messagesRef.current, userMsg];
+    setMessages(updated);
+    setConversation(prev => prev + `\nStudent: ${answer}`);
+    setUserTranscript("");
+    setAiThinking(true);
+
+    try {
+      const res = await axios.post("/api/ai-conversation", {
+        messages: updated,
+        category: interview?.jobPosition,
+        description: interview?.jobDescription,
+        duration: interview?.duration,
+        userName: candidateName,
+      });
+      if (res.data?.success && res.data?.message) {
+        const aiText = res.data.message;
+        setMessages(prev => [...prev, { role: "assistant", content: aiText }]);
+        setConversation(prev => prev + `\nAI Coach: ${aiText}`);
+        setQuestionCount(prev => prev + 1);
+        setAiThinking(false);
+
+        const lower = aiText.toLowerCase();
+        if (lower.includes("wraps up") || lower.includes("end of our session") || lower.includes("that concludes") || lower.includes("best of luck") || lower.includes("good luck with your")) {
+          await speak(aiText);
+          setEndReason("Practice session completed!");
+          setInterviewEnded(true);
+          return;
+        }
+        await speak(aiText);
+        if (!interviewEndedRef.current) startListening();
+      } else {
+        throw new Error(res.data?.error || "No response");
+      }
+    } catch (err) {
+      setAiThinking(false);
+      setAiError("Connection issue — retrying...");
+      setTimeout(() => { setAiError(""); if (!interviewEndedRef.current) startListening(); }, 2000);
     }
+  }, [interview, candidateName, speak, startListening]);
+
+  // --- Start Interview ---
+  const startInterview = useCallback(async () => {
+    if (!interview || !speechSupported) return;
+    setInterviewStarted(true);
+    setTimerActive(true);
+    setAiError("");
+
+    const category = interview.jobPosition || "Technical";
+    const firstQ = {
+      "System Design": "How would you design a URL shortening service like bit.ly? Walk me through the high-level architecture.",
+      "DSA": "Can you explain the difference between arrays and linked lists? When would you choose one over the other?",
+      "Development": "Tell me about a project you've built recently. What technologies did you use and what was the most challenging part?",
+      "Behavioral": "Tell me about yourself. What got you interested in software engineering?",
+    };
+    const q = firstQ[category] || "Tell me about yourself and your technical background.";
+    const greeting = `Hi ${candidateName || "there"}! Welcome to your ${category} practice session. I'll be your AI interviewer today. Let's get started! ${q}`;
+
+    setMessages([{ role: "assistant", content: greeting }]);
+    setConversation(`AI Coach: ${greeting}`);
+    setQuestionCount(1);
+
+    await speak(greeting);
+    if (!interviewEndedRef.current) startListening();
+  }, [interview, candidateName, speechSupported, speak, startListening]);
+
+  // --- End interview ---
+  const endInterview = useCallback((reason) => {
+    setEndReason(reason || "Interview ended");
+    setInterviewEnded(true);
+    setTimerActive(false);
+    setIsListening(false);
+    setIsSpeaking(false);
+    window.speechSynthesis?.cancel();
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+    if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+  }, []);
+
+  // --- Generate feedback on end ---
+  useEffect(() => {
+    if (!interviewEnded) return;
+    window.speechSynthesis?.cancel();
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+    if (!conversation || conversation.trim() === "" || feedback || feedbackLoading || feedbackSaved || feedbackGenerationRef.current) return;
+
+    const timeout = setTimeout(async () => {
+      feedbackGenerationRef.current = true;
+      setFeedbackLoading(true);
+      try {
+        const result = await axios.post("/api/ai-feedback", {
+          conversation, interview_id, jobPosition: interview?.jobPosition || "Technical",
+        });
+        if (result.data?.success && result.data?.feedback) {
+          setFeedback(result.data);
+          const record = {
+            interview_id,
+            userEmail: candidateEmail || "student@prepai.com",
+            userName: candidateName || "Student",
+            feedback: {
+              rating: result.data.feedback.rating,
+              summary: result.data.feedback.summary,
+              recommendation: result.data.feedback.Recommendation || result.data.feedback.recommendation,
+              recommendationMsg: result.data.feedback.RecommendationMsg || result.data.feedback.recommendationMsg,
+              conversation,
+              metadata: { endReason, tabSwitchCount, objectWarningCount, questionCount, timestamp: new Date().toISOString() },
+            },
+          };
+          const { error } = await supabase.from("interview-feedback").insert(record);
+          if (error && (error.code === "23505" || error.message?.includes("duplicate"))) {
+            await supabase.from("interview-feedback").update({ feedback: record.feedback }).eq("interview_id", interview_id).eq("userEmail", record.userEmail);
+          }
+          setFeedbackSaved(true);
+        } else throw new Error("Invalid response");
+      } catch {
+        const cnt = messages.filter(m => m.role === "user").length;
+        setFeedback({
+          feedback: {
+            rating: { technicalSkills: Math.min(10, cnt + 2), communication: Math.min(10, cnt + 3), problemSolving: Math.min(10, cnt + 1), confidence: Math.min(10, cnt + 2) },
+            summary: `You answered ${cnt} question(s). ${cnt >= 3 ? "Solid effort!" : "Try answering more next time."}`,
+            Recommendation: cnt >= 3 ? "Good - Keep Practicing" : "Needs More Practice",
+            RecommendationMsg: "Keep practicing regularly to improve!",
+          },
+        });
+        setFeedbackSaved(true);
+        setFeedbackError("Used offline feedback (AI service temporarily unavailable).");
+      } finally {
+        setFeedbackLoading(false);
+        feedbackGenerationRef.current = false;
+      }
+    }, 1500);
+    return () => clearTimeout(timeout);
   }, [interviewEnded]);
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="flex items-center justify-between px-8 py-4 border-b bg-white">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-xl text-gray-800">PrepAI Practice</span>
+  // --- Tab switch detection ---
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === "hidden" && interviewStarted && !interviewEnded) {
+        setTabSwitchCount(prev => {
+          const next = prev + 1;
+          setTabSwitchWarning(`Tab switch detected! Warning ${next}/3`);
+          setTimeout(() => setTabSwitchWarning(""), 3000);
+          if (next >= 3) endInterview("Stopped: Tab switching detected 3 times.");
+          return next;
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, [interviewStarted, interviewEnded, endInterview]);
+
+  // --- Camera + Object Detection ---
+  useEffect(() => {
+    let mounted = true, intervalId;
+    async function startCamera() {
+      let model;
+      try { model = await cocoSsd.load(); } catch { setCameraError("Detection model failed to load"); return; }
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); } catch { setCameraError("Camera access denied"); return; }
+      if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
+      streamRef.current = stream;
+      const attach = () => { if (videoRef.current) videoRef.current.srcObject = stream; else setTimeout(attach, 100); };
+      attach();
+      intervalId = setInterval(async () => {
+        if (!videoRef.current || videoRef.current.readyState !== 4) return;
+        try {
+          const preds = await model.detect(videoRef.current);
+          let persons = 0, phone = false, book = false;
+          preds.forEach(p => { if (p.class === "person" && p.score > 0.7) persons++; if (p.class === "cell phone") phone = true; if (p.class === "book") book = true; });
+          if (persons > 1) endInterview("Stopped: Multiple persons detected.");
+          else if (phone) { setObjectWarning("Phone detected!"); setObjectWarningCount(p => { if (p+1>=3) endInterview("Stopped: Phone detected 3 times."); return p+1; }); setTimeout(() => setObjectWarning(""), 3000); }
+          else if (book) { setObjectWarning("Book detected!"); setObjectWarningCount(p => { if (p+1>=3) endInterview("Stopped: Book detected 3 times."); return p+1; }); setTimeout(() => setObjectWarning(""), 3000); }
+          else setObjectWarning("");
+        } catch {}
+      }, 2000);
+    }
+    startCamera();
+    return () => { mounted = false; if (intervalId) clearInterval(intervalId); if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
+  }, [endInterview]);
+
+  // --- Redirect after feedback ---
+  useEffect(() => {
+    if (interviewEnded && feedbackSaved) {
+      const t = setTimeout(() => router.push("/interview-feedback"), 10000);
+      return () => clearTimeout(t);
+    }
+  }, [interviewEnded, feedbackSaved, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading practice session...</p>
         </div>
-        <div className="flex items-center gap-2 text-gray-700 font-mono text-lg">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-            <path stroke="currentColor" strokeWidth="2" d="M12 6v6l4 2" />
-          </svg>
-          <TimerComponent
-            active={timerActive}
-            duration={interview?.duration}
-            onComplete={() => {
-              setEndReason("Interview ended: Time is up.");
-              setInterviewEnded(true);
-            }}
-            interviewEnded={interviewEnded}
-          />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b bg-white shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+          </div>
+          <span className="font-bold text-lg text-gray-800">PrepAI</span>
+          {interviewStarted && !interviewEnded && (
+            <span className="ml-3 flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>Live
+            </span>
+          )}
+        </div>
+        <div className="font-mono text-gray-700 text-sm">
+          <TimerComponent active={timerActive} duration={interview?.duration} onComplete={() => endInterview("Time is up!")} interviewEnded={interviewEnded} />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex flex-col items-center mt-8">
-        <h2 className="font-bold text-2xl mb-8">AI Practice Session</h2>
-        {/* Interview will start automatically when questions are loaded */}
-        {/* Timer removed from main content, only in header now */}
-        <div className="flex flex-row gap-16 mb-12 w-full max-w-5xl justify-center">
-          {/* AI Coach Card */}
-          <div className={`bg-white rounded-xl shadow flex flex-col items-center justify-center w-80 h-80 transition ${isSpeaking ? "ring-4 ring-blue-400 ring-offset-2" : ""}`}>
-            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center mb-4">
-              <Image src="/ai.jpg" alt="AI Coach" width={96} height={96} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
-            </div>
-            <div className="font-semibold text-lg">AI Coach</div>
-          </div>
-          {/* User Video Card */}
-          <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center w-80 h-80">
-            <div className="w-56 h-56 rounded-xl bg-gray-200 flex items-center justify-center overflow-hidden" style={{ position: "relative" }}>
-              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover rounded-xl" style={{ position: "absolute", top: 0, left: 0 }} />
-              <canvas ref={canvasRef} className="w-full h-full absolute top-0 left-0 pointer-events-none" style={{ zIndex: 2 }} />
-            </div>
-            <div className="font-semibold text-lg mt-4">You</div>
-          </div>
+      <div className="max-w-6xl mx-auto px-4 py-5">
+        <div className="text-center mb-5">
+          <h2 className="text-xl font-bold text-gray-900">{interview?.jobPosition || "Practice"} Interview</h2>
+          <p className="text-gray-500 text-sm mt-1">
+            {!interviewStarted ? "Ready when you are" : interviewEnded ? endReason : `Question ${questionCount}`}
+          </p>
         </div>
-        
-        {/* Auto Photo Sync Indicator */}
-        <AutoPhotoSyncIndicator 
-          interviewId={interview_id} 
-          candidateEmail={candidateEmail} 
-        />
-        
-        {cameraError && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-200 text-red-900 px-6 py-3 rounded shadow-lg z-50 font-semibold">
-            {cameraError}
+
+        {/* Alerts */}
+        {(objectWarning || tabSwitchWarning || cameraError || aiError) && (
+          <div className="max-w-3xl mx-auto mb-4 space-y-2">
+            {aiError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm">{aiError}</div>}
+            {cameraError && <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2.5 rounded-lg text-sm">{cameraError}</div>}
+            {objectWarning && <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2.5 rounded-lg text-sm">{objectWarning}</div>}
+            {tabSwitchWarning && <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-2.5 rounded-lg text-sm">{tabSwitchWarning}</div>}
           </div>
         )}
-        {objectWarning && !cameraError && !interviewEnded && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-200 text-yellow-900 px-6 py-3 rounded shadow-lg z-50 font-semibold">
-            {objectWarning}
-          </div>
-        )}
-        {tabSwitchWarning && !interviewEnded && (
-          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-200 text-yellow-900 px-6 py-3 rounded shadow-lg z-50 font-semibold">
-            {tabSwitchWarning}
-          </div>
-        )}
-        {interviewEnded && (
-          <>
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-200 text-red-900 px-6 py-3 rounded shadow-lg z-50 font-semibold">
-              {endReason || "Interview ended."}
+
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
+          {/* Camera */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow overflow-hidden">
+              <div className="aspect-[4/3] bg-gray-900 relative">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{candidateName || "You"}</div>
+              </div>
+              <div className="p-3 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  {isListening && <span className="flex items-center gap-1 text-green-600 font-medium"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>Listening</span>}
+                  {isSpeaking && <span className="flex items-center gap-1 text-blue-600 font-medium"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>AI Speaking</span>}
+                  {aiThinking && <span className="flex items-center gap-1 text-purple-600 font-medium"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>Thinking</span>}
+                  {!isListening && !isSpeaking && !aiThinking && interviewStarted && !interviewEnded && <span className="text-gray-400">Ready</span>}
+                </div>
+                {tabSwitchCount > 0 && <span className="text-red-500">Warnings: {tabSwitchCount}/3</span>}
+              </div>
             </div>
-            {/* Feedback Generation and Status */}
-            <div className="flex flex-col items-center mt-8">
-              {/* Auto-feedback status */}
-              {feedbackLoading && (
-                <div className="text-blue-600 mb-4 font-semibold">
-                  🤖 Generating AI feedback automatically...
+          </div>
+
+          {/* Chat */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow flex flex-col" style={{ height: "460px" }}>
+              <div className="px-4 py-3 border-b flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isSpeaking ? "bg-blue-500" : "bg-blue-100"}`}>
+                  <svg className={`w-4 h-4 ${isSpeaking ? "text-white" : "text-blue-600"}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                 </div>
-              )}
-              
-              {feedbackSaved && (
-                <div className="text-green-600 mb-4 font-semibold">
-                  ✅ Feedback saved to database successfully!
-                </div>
-              )}
-              
-              {/* Manual feedback button (if auto-generation failed) */}
-              {!feedbackLoading && !feedbackSaved && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={GenerateFeedback}
-                    className="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 disabled:opacity-50"
-                    disabled={feedbackLoading}
-                  >
-                    {feedbackLoading ? "Generating Feedback..." : "Generate Feedback"}
-                  </button>
-                  
-                  {/* Debug Database Connection Button */}
-                  <button
-                    onClick={async () => {
-                      console.log("🧪 Testing database connection...");
-                      try {
-                        // Test basic connection
-                        const { data: testData, error: testError } = await supabase
-                          .from('interview-feedback')
-                          .select('count', { count: 'exact', head: true });
-                        
-                        if (testError) {
-                          console.error("❌ Database test failed:", testError);
-                          alert(`Database Error: ${testError.message}`);
-                          return;
-                        }
-                        
-                        console.log("✅ Database connection successful!");
-                        
-                        // Test insert
-                        const testRecord = {
-                          interview_id: 'test-' + Date.now(),
-                          userEmail: candidateEmail || 'test@example.com',
-                          userName: candidateName || 'Test User',
-                          feedback: {
-                            rating: { technicalSkills: 8, communication: 7, problemSolving: 6, experience: 9 },
-                            summary: 'Database test record',
-                            recommendation: 'Test',
-                            metadata: { timestamp: new Date().toISOString(), test: true }
-                          }
-                        };
-                        
-                        const { data: insertData, error: insertError } = await supabase
-                          .from('interview-feedback')
-                          .insert(testRecord)
-                          .select();
-                        
-                        if (insertError) {
-                          console.error("❌ Insert test failed:", insertError);
-                          alert(`Insert Error: ${insertError.message}\\n\\nThis might be due to:\\n1. Missing columns in table\\n2. Permission issues\\n3. Invalid data format`);
-                          return;
-                        }
-                        
-                        console.log("✅ Insert test successful:", insertData);
-                        alert(`✅ Database tests passed!\\n\\nConnection: OK\\nInsert: OK\\nRecord created with ID: ${insertData[0]?.id}`);
-                        
-                        // Cleanup
-                        await supabase.from('interview-feedback').delete().eq('interview_id', testRecord.interview_id);
-                        
-                      } catch (error) {
-                        console.error("💥 Database test failed:", error);
-                        alert(`Database Test Failed: ${error.message}`);
-                      }
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white text-sm rounded shadow hover:bg-gray-700"
-                  >
-                    🧪 Test DB
-                  </button>
-                </div>
-              )}
-              
-              {feedbackError && (
-                <div className="text-red-600 mt-2 p-3 bg-red-100 rounded">
-                  <strong>Error:</strong> {feedbackError}
-                </div>
-              )}
-              
-              {feedback && (
-                <div className="mt-4 p-4 bg-gray-100 rounded shadow w-full max-w-2xl text-left">
-                  <h3 className="font-bold text-lg mb-2">Interview Feedback</h3>
-                  <div className="space-y-2">
-                    {feedback.feedback && Object.entries(feedback.feedback).map(([key, value]) => (
-                      <div key={key} className="border-b pb-2">
-                        <strong className="text-blue-700">{key}:</strong> 
-                        <span className="ml-2">{typeof value === 'object' ? JSON.stringify(value, null, 2) : value}</span>
-                      </div>
-                    ))}
+                <div>
+                  <div className="font-semibold text-sm text-gray-800">AI Interview Coach</div>
+                  <div className="text-xs text-gray-400">
+                    {isSpeaking ? "Speaking..." : aiThinking ? "Thinking..." : isListening ? "Your turn — speak now" : interviewStarted ? "Ready" : "Waiting to start"}
                   </div>
                 </div>
-              )}
-            </div>
-          </>
-        )}
-        {/* Controls */}
-        {!interviewEnded && (
-          <div className="flex gap-6 mb-2 justify-center">
-            {/* Mic Button (Start Vapi) */}
+              </div>
 
-            {/* End Call Button (End Vapi with confirmation) */}
-            <button
-              onClick={() => {
-                if (window.confirm("Are you sure you want to cancel the interview? The interview will be cancelled.")) {
-                  setEndReason("Interview cancelled by user.");
-                  setInterviewEnded(true);
-                  endVapi();
-                }
-              }}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 shadow transition"
-            >
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.13 1.05.37 2.05.7 3a2 2 0 0 1-.45 2.11l-1.27 1.27a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.95.33 1.95.57 3 .7A2 2 0 0 1 22 16.92z" />
-              </svg>
-            </button>
-          </div>
-        )}
-        {aiError && !interviewEnded && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border-2 border-red-400 text-red-800 px-6 py-4 rounded-lg shadow-lg z-50 max-w-lg">
-            <div className="font-bold text-lg mb-2">� Interview System Notice</div>
-            <div className="mb-3">{aiError}</div>
-            {(aiError.includes("Wallet Balance") || aiError.includes("Purchase More Credits") || aiError.includes("insufficient credits")) ? (
-              <div className="bg-blue-50 border border-blue-300 rounded p-3 mt-3">
-                <div className="font-semibold text-blue-800">💡 What to do:</div>
-                <div className="text-sm text-blue-700 mt-1">
-                  1. Try refreshing this page (Ctrl+Shift+R)<br/>
-                  2. Check your internet connection<br/>
-                  3. If the issue persists, contact our support team<br/>
-                  4. You can try again in a few minutes
-                </div>
-              </div>
-            ) : (aiError.includes("Invalid API key") || aiError.includes("Unauthorized")) ? (
-              <div className="bg-blue-50 border border-blue-300 rounded p-3 mt-3">
-                <div className="font-semibold text-blue-800">💡 What to do:</div>
-                <div className="text-sm text-blue-700 mt-1">
-                  1. Try refreshing this page (Ctrl+Shift+R)<br/>
-                  2. Check your internet connection<br/>
-                  3. Clear your browser cache and try again<br/>
-                  4. Contact support if the issue continues
-                </div>
-              </div>
-            ) : null}
-            
-            {/* Add retry button for general errors */}
-            {!aiError.includes("Wallet Balance") && 
-             !aiError.includes("Purchase More Credits") && 
-             !aiError.includes("insufficient credits") && 
-             !aiError.includes("Invalid API key") && 
-             !aiError.includes("Unauthorized") && (
-              <div className="mt-3">
-                <button
-                  onClick={() => {
-                    setRetryCount(prev => prev + 1);
-                    setAiError("");
-                    setVapiStarted(false);
-                    if (questions && questions.length > 0) {
-                      setTimeout(() => startVapi(questions), 1000);
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  🔄 Try Again {retryCount > 0 ? `(Attempt ${retryCount + 1})` : ''}
-                </button>
-                {retryCount >= 2 && (
-                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                    <div className="font-semibold text-yellow-800">⚠️ Multiple Attempts Failed</div>
-                    <div className="text-yellow-700 mt-1">
-                      The interview system is experiencing technical difficulties. You can:
-                      <br/>• Refresh the entire page (F5)
-                      <br/>• Try again in 5-10 minutes
-                      <br/>• Contact support if the issue persists
+              <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {!interviewStarted && !interviewEnded && (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-400">
+                      <svg className="w-16 h-16 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24"><path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
+                      <p className="text-sm mb-1">Your AI interviewer is ready</p>
+                      <p className="text-xs text-gray-300">Click the button below to begin</p>
+                    </div>
+                  </div>
+                )}
+
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === "user" ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-800 rounded-bl-sm"}`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+
+                {aiThinking && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm">
+                      <div className="flex gap-1.5">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:"0ms"}}></span>
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:"150ms"}}></span>
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:"300ms"}}></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {userTranscript && isListening && (
+                  <div className="flex justify-end">
+                    <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-sm bg-blue-50 text-blue-700 text-sm italic border border-blue-200">
+                      {userTranscript}<span className="inline-block w-1 h-4 bg-blue-400 ml-1 animate-pulse"></span>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Bottom */}
+              <div className="px-4 py-3 border-t bg-gray-50 rounded-b-2xl">
+                {!interviewStarted && !interviewEnded && (
+                  <button onClick={startInterview} disabled={!interview || !speechSupported} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2 text-base">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                    Start Interview
+                  </button>
+                )}
+                {interviewStarted && !interviewEnded && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 text-sm text-gray-500">
+                      {isListening ? (
+                        <span className="flex items-center gap-2">
+                          <span className="flex gap-0.5 items-end h-4">
+                            {[8,14,6,16,10].map((h,i) => <span key={i} className="w-1 bg-green-500 rounded-full animate-pulse" style={{height:`${h}px`, animationDelay:`${i*100}ms`}}></span>)}
+                          </span>
+                          Speak your answer...
+                        </span>
+                      ) : isSpeaking ? "AI is speaking..." : aiThinking ? "Generating response..." : "Processing..."}
+                    </div>
+                    <button onClick={() => { if (window.confirm("End the interview?")) endInterview("Ended by you."); }} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition">
+                      End Interview
+                    </button>
+                  </div>
+                )}
+                {interviewEnded && (
+                  <div className="text-center space-y-2">
+                    {feedbackLoading && <div className="flex items-center justify-center gap-2 text-blue-600 font-medium text-sm"><div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>Generating feedback...</div>}
+                    {feedbackSaved && !feedbackError && <div className="text-green-600 font-medium text-sm">Feedback saved! Redirecting...</div>}
+                    {feedbackError && <div className="text-yellow-600 text-xs">{feedbackError}</div>}
+                    <button onClick={() => router.push("/interview-feedback")} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">View Feedback</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Feedback card */}
+            {feedback && (
+              <div className="mt-4 bg-white rounded-2xl shadow p-5">
+                <h3 className="font-bold text-lg mb-3">Session Feedback</h3>
+                {feedback.feedback?.rating && (
+                  <div className="grid grid-cols-2 gap-2.5 mb-4">
+                    {Object.entries(feedback.feedback.rating).map(([key, val]) => (
+                      <div key={key} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-xs text-gray-600 capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${val >= 7 ? "bg-green-500" : val >= 5 ? "bg-blue-500" : "bg-yellow-500"}`} style={{ width: `${(val/10)*100}%` }}></div>
+                          </div>
+                          <span className="text-xs font-bold">{val}/10</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {feedback.feedback?.summary && <p className="text-sm text-gray-700 mb-3">{feedback.feedback.summary}</p>}
+                {(feedback.feedback?.Recommendation || feedback.feedback?.recommendation) && (
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                    (feedback.feedback.Recommendation||feedback.feedback.recommendation)==="Excellent"?"bg-green-100 text-green-700":
+                    (feedback.feedback.Recommendation||feedback.feedback.recommendation)?.includes("Good")?"bg-blue-100 text-blue-700":"bg-yellow-100 text-yellow-700"
+                  }`}>{feedback.feedback.Recommendation || feedback.feedback.recommendation}</span>
+                )}
+              </div>
             )}
           </div>
-        )}
-        <div className="text-gray-500 text-sm mb-8">
-          {aiError ? "Interview Error - Please Check Settings" : "Interview in Progress..."}
         </div>
       </div>
     </div>

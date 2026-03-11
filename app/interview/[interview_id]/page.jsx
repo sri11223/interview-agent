@@ -29,7 +29,7 @@ export default function JoinInterviewPage({ params }) {
       // Fetch interview data
       const { data, error } = await supabase
         .from("Interviews")
-        .select("jobPosition, duration, type, questionList")
+        .select("jobPosition, duration, type, jobDescription")
         .eq("interview_id", interview_id)
         .single();
       setInterview(data);
@@ -79,7 +79,7 @@ export default function JoinInterviewPage({ params }) {
               </div>
               <div className="flex items-center gap-1">
                 <FileText className="w-4 h-4" />
-                <span>{interview.questionList?.length || 0} Questions</span>
+                <span>AI-generated questions</span>
               </div>
             </div>
           </div>

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import QuestionListContainer from './QuestionListContainer';
 import { supabase } from '@/services/supabaseClient';
 import { useUser } from '@/app/provider';
-import { v4 as uuidv4 } from 'uuid';
 
 function QuestionList({formData, onFinish}) {
     const [loading, setLoading] = useState(false);
@@ -37,7 +36,7 @@ function QuestionList({formData, onFinish}) {
             }
             
             const currentUser = user || session.user;
-            const interviewId = uuidv4();
+            const interviewId = crypto.randomUUID();
             
             // Debug: Check QuestionList format
             console.log('🔍 QuestionList Debug Info:', {
@@ -152,7 +151,7 @@ function QuestionList({formData, onFinish}) {
             // Emergency fallback to localStorage only
             try {
                 const fallbackData = {
-                    id: uuidv4(),
+                    id: crypto.randomUUID(),
                     job_position: formData.jobPosition || 'Not specified',
                     job_description: formData.jobDescription || 'Not specified',
                     interview_duration: formData.duration || '30 minutes',
