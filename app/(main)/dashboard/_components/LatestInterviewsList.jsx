@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import NextLink from 'next/link'
-import { GraduationCap, Play, Clock, BarChart3 } from 'lucide-react'
+import { GraduationCap, Play, Clock, BarChart3, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/services/supabaseClient'
 import { useUser } from '@/app/provider'
@@ -43,19 +43,33 @@ function LatestInterviewsList() {
 
     return (
         <div className='my-5'>
-            <h2 className='font-bold text-2xl mb-5'>Recent Practice Sessions</h2>
+            <div className='flex justify-between items-center mb-6'>
+                <h2 className='text-2xl font-extrabold text-gray-900 tracking-tight'>Recent Practice Sessions</h2>
+                {interviewList?.length > 0 && (
+                    <NextLink href="/dashboard/all-interview" className='text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1 group'>
+                        View All
+                        <ChevronRight className='w-4 h-4 transition-transform group-hover:translate-x-1' />
+                    </NextLink>
+                )}
+            </div>
+            
             {interviewList?.length === 0 &&
-                <div className='p-8 flex flex-col gap-3 items-center justify-center mt-5 bg-white rounded-xl border' >
-                    <GraduationCap className='h-12 w-12 text-blue-500' />
-                    <h2 className='text-lg font-medium'>No practice sessions yet!</h2>
-                    <p className='text-gray-500 text-sm'>Start your first AI mock interview</p>
-                    <Button asChild>
+                <div className='p-12 flex flex-col gap-4 items-center justify-center mt-5 bg-white rounded-2xl shadow-sm border border-gray-100 text-center'>
+                    <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
+                        <GraduationCap className='h-10 w-10 text-blue-600' />
+                    </div>
+                    <div>
+                        <h2 className='text-xl font-bold text-gray-900'>No practice sessions yet!</h2>
+                        <p className='text-gray-500 mt-1 max-w-sm mx-auto'>Start your first AI mock interview and track your progress here.</p>
+                    </div>
+                    <Button asChild className="mt-2 button-primary px-8">
                         <NextLink href="/dashboard/create-interview">Start Practicing</NextLink>
                     </Button>
                 </div>
             }
+            
             {interviewList && interviewList.length > 0 &&
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {interviewList.map((interview, index) => (
                         <PracticeCard 
                             interview={interview} 
@@ -71,39 +85,36 @@ function LatestInterviewsList() {
 
 function PracticeCard({ interview, onRetry }) {
     return (
-        <div className="bg-white border rounded-xl p-5 hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-3">
-                <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                    {moment(interview.created_at).format('DD MMM YYYY')}
+        <div className="bg-white border hover:border-blue-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group flex flex-col h-full">
+            <div className="flex justify-between items-start mb-4">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider">
+                    {moment(interview.created_at).format('MMM DD, YYYY')}
                 </div>
             </div>
             
-            <h3 className="font-bold text-lg text-gray-800 mb-1">
+            <h3 className="font-extrabold text-xl text-gray-900 mb-3 flex-shrink-0 line-clamp-2">
                 {interview.jobPosition || 'Practice Session'}
             </h3>
             
-            <div className="flex items-center gap-3 text-gray-500 text-sm mb-4">
-                <div className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{interview.duration || 'N/A'}</span>
+            <div className="flex items-center gap-4 text-gray-500 text-sm mb-6 mt-auto">
+                <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium">{interview.duration || 'N/A'} min</span>
                 </div>
-                <div className="flex items-center gap-1">
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    <span>{interview.type || 'General'}</span>
+                <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md">
+                    <BarChart3 className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium">{interview.type || 'General'}</span>
                 </div>
             </div>
             
-            <div className="flex gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 flex items-center gap-2"
-                    onClick={onRetry}
-                >
-                    <Play className="w-4 h-4" />
-                    Practice Again
-                </Button>
-            </div>
+            <Button
+                variant="outline"
+                className="w-full justify-center gap-2 group-hover:bg-blue-600 group-hover:text-white transition-colors"
+                onClick={onRetry}
+            >
+                <Play className="w-4 h-4 fill-current" />
+                Practice Again
+            </Button>
         </div>
     );
 }

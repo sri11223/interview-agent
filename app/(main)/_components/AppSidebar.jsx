@@ -46,42 +46,44 @@ export function AppSidebar() {
   const path=usePathname()
   console.log(path);
   return (
-    <Sidebar>
-      <SidebarHeader className='flex flex-col items-center pt-0 space-y-1'>
-        <div className="flex items-center gap-2 py-2">
-          <GraduationCap className="h-7 w-7 text-blue-600" />
-          <span className="text-xl font-bold text-gray-900">PrepAI</span>
+    <Sidebar className="border-r-2 border-gray-100 bg-white">
+      <SidebarHeader className='flex flex-col items-start px-6 pt-8 pb-6 space-y-6'>
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl shadow-md">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+          <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">PrepAI</span>
         </div>
-        <Button className='w-full mt-1' asChild>
-          <Link href="/dashboard/create-interview">
-            <Plus />
-            New Practice Session
-          </Link>
-        </Button>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-3">
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {SideBarOptions.map((option, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton asChild className={`p-5 ${path == option.path && 'bg-blue-50'}`}>
-                    <Link href={option.path}>
-                      <option.icon className="mr-2 h-4 w-4" />
-                      <span className={`text-[16px] ${path == option.path && 'text-primary'}`}>
-                        {option.name}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="space-y-2">
+              {SideBarOptions.map((option, index) => {
+                const isActive = path === option.path;
+                return (
+                  <SidebarMenuItem key={index}>
+                    <SidebarMenuButton asChild className={`p-6 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-50 ring-1 ring-blue-100 shadow-sm' : 'hover:bg-gray-50 hover:text-gray-900 text-gray-500'}`}>
+                      <Link href={option.path} className="flex items-center gap-4">
+                        <option.icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                        <span className={`text-base font-semibold ${isActive ? 'text-blue-700' : ''}`}>
+                          {option.name}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="px-4 py-2 text-xs text-muted-foreground">
-          PrepAI - Interview Practice Platform
+      <SidebarFooter className="p-6 border-t border-gray-100 mt-auto">
+        <div className="flex flex-col gap-1">
+          <div className="text-sm font-bold text-gray-900">PrepAI</div>
+          <div className="text-xs font-medium text-gray-400">
+            Interview Practice Platform
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

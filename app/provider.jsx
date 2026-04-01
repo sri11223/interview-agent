@@ -12,141 +12,104 @@ function Provider({ children }) {
     const router = useRouter();
 
     useEffect(() => {
-        // Get initial session
-        getSession();
+        let mounted = true;
 
-        // Listen for auth changes
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!mounted) return;
+            
+            setSession(session);
+            if (session?.user) {
+                setUser({
+                    email: session.user.email,
+                    name: session.user.user_metadata?.name || 'User',
+                    picture: session.user.user_metadata?.picture
+                });
+                handleUserSession(session.user);
+            }
+
+            const isOauthCallback = typeof window !== 'undefined' && 
+                (window.location.hash.includes('access_token=') || window.location.search.includes('code='));
+                
+            if (!isOauthCallback && !session) {
+                setLoading(false);
+            }
+            if (session) {
+                setLoading(false);
+            }
+            
+            if (isOauthCallback && !session) {
+                // Fallback timeout in case `SIGNED_IN` event never fires
+                setTimeout(() => {
+                    if (mounted) setLoading(false);
+                }, 5000);
+            }
+        };
+
+        checkSession();
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state change:', event, session?.user?.email);
+            if (!mounted) return;
+
             setSession(session);
             
             if (event === 'SIGNED_IN' && session) {
-                await handleUserSession(session.user);
+                setUser({
+                    email: session.user.email,
+                    name: session.user.user_metadata?.name || 'User',
+                    picture: session.user.user_metadata?.picture
+                });
+                handleUserSession(session.user);
+                setLoading(false);
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setSession(null);
+                setLoading(false);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
-
-    const getSession = async () => {
-        try {
-            setLoading(true);
-            
-            // Increase timeout to 5 seconds for session check
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Session check timeout - continuing without auth')), 5000)
-            );
-            
-            const sessionPromise = supabase.auth.getSession();
-            
-            try {
-                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
-                
-                if (error) {
-                    console.warn('Session error (non-critical):', error);
-                    setSession(null);
-                    setUser(null);
-                    return;
-                }
-
-                setSession(session);
-                
-                if (session?.user) {
-                    // Don't wait for user creation/fetching - do it in background
-                    handleUserSession(session.user).catch(err => 
-                        console.warn('User session handling failed (non-critical):', err)
-                    );
-                    
-                    // Set a basic user immediately to speed up loading
-                    setUser({
-                        email: session.user.email,
-                        name: session.user.user_metadata?.name || 'User',
-                        picture: session.user.user_metadata?.picture
-                    });
-                } else {
-                    setUser(null);
-                }
-            } catch (sessionTimeoutError) {
-                console.warn('Session timeout (non-critical):', sessionTimeoutError);
-                // App continues to work without authentication
-                setSession(null);
-                setUser(null);
-            }
-        } catch (error) {
-            console.warn('Session check failed (non-critical):', error);
-            setSession(null);
-            setUser(null);
-        } finally {
-            setLoading(false); // Always set loading to false quickly
-        }
-    };
 
     const handleUserSession = async (authUser) => {
         try {
-            // Increase timeout to 5 seconds and make database operations optional
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Database query timeout - continuing with basic user info')), 5000)
-            );
-
-            // Check if user exists in database with timeout
-            const queryPromise = supabase
+            const { data: users, error: selectError } = await supabase
                 .from('Users')
                 .select("*")
                 .eq('email', authUser.email)
-                .limit(1); // Limit to 1 for faster query
+                .limit(1);
 
-            try {
-                const { data: users, error: selectError } = await Promise.race([queryPromise, timeoutPromise]);
-
-                if (selectError) {
-                    console.warn('Database select error (non-critical):', selectError);
-                    // Keep the basic user info that was already set
-                    return;
-                }
-
-                if (users?.length === 0) {
-                    // Try to create user in background, don't block UI
-                    const insertPromise = supabase.from("Users")
-                        .insert([
-                            {
-                                name: authUser.user_metadata?.name,
-                                email: authUser.email, 
-                                picture: authUser.user_metadata?.picture
-                            }
-                        ])
-                        .select();
-                    
-                    try {
-                        const { data, error: insertError } = await Promise.race([insertPromise, timeoutPromise]);
-                            
-                        if (!insertError && data) {
-                            setUser(data[0]);
-                        }
-                        // If insert fails, keep the basic user info
-                    } catch (insertTimeoutError) {
-                        console.warn('User creation timeout (non-critical):', insertTimeoutError);
-                        // Keep the basic user info that was already set
-                    }
-                } else {
-                    // Update user with database info
-                    setUser(users[0]);
-                }
-            } catch (queryTimeoutError) {
-                console.warn('Database query timeout (non-critical):', queryTimeoutError);
-                // App continues to work with basic user info
+            if (selectError) {
+                console.warn('Database select error (non-critical):', selectError);
                 return;
             }
 
+            if (users?.length === 0) {
+                const { data, error: insertError } = await supabase.from("Users")
+                    .insert([
+                        {
+                            name: authUser.user_metadata?.name,
+                            email: authUser.email, 
+                            picture: authUser.user_metadata?.picture
+                        }
+                    ])
+                    .select();
+                
+                if (!insertError && data) {
+                    setUser(data[0]);
+                }
+            } else {
+                setUser(users[0]);
+            }
         } catch (error) {
-            console.warn('User session handling failed (non-critical):', error);
-            // App continues with basic user info - no errors thrown
+            console.warn('User session handling failed:', error);
         }
     };
 
-    // Show improved loading while checking authentication
     if (loading) {
         return <LoadingSpinner message="Initializing your session..." fullScreen={true} />;
     }
@@ -159,7 +122,7 @@ function Provider({ children }) {
             loading,
             isAuthenticated: !!session
         }}>
-            <div>{children}</div>
+            {children}
         </UserDetailContext.Provider>
     );
 }
