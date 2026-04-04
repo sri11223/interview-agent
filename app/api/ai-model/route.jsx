@@ -18,12 +18,12 @@ export async function POST(req){
     try {
       
         const openai = new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
+            baseURL: "https://api.groq.com/openai/v1",
+            apiKey: process.env.GROQ_API_KEY,
         })
         
         const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.0-flash-001",
+            model: "llama3-8b-8192", // Changed to Groq per request
             messages: [
                 { 
                     role: "user", 

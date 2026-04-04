@@ -7,10 +7,12 @@ import * as cocoSsd from "@tensorflow-models/coco-ssd";
 import "@tensorflow/tfjs";
 import { supabase } from "@/services/supabaseClient";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/app/provider";
 
 export default function InterviewSession({ params }) {
   const { interview_id } = React.use(params);
   const router = useRouter();
+  const { user: contextUser, session } = useUser();
 
   // --- State ---
   const [candidateName, setCandidateName] = useState("");
@@ -39,11 +41,7 @@ export default function InterviewSession({ params }) {
   const [timerActive, setTimerActive] = useState(false);
 
   // Voice
-  const [voiceGender, setVoiceGender] = useState("female");
-
-  // Code Editor
-  const [showCodeEditor, setShowCodeEditor] = useState(false);
-  const codeCategory = interview?.jobPosition === "DSA" || interview?.jobPosition === "Development";
+  const [voiceGender, setVoiceGender] = useState("male");
 
   // Proctoring
   const [objectWarningCount, setObjectWarningCount] = useState(0);
@@ -51,6 +49,10 @@ export default function InterviewSession({ params }) {
   const [objectWarning, setObjectWarning] = useState("");
   const [tabSwitchWarning, setTabSwitchWarning] = useState("");
   const [cameraError, setCameraError] = useState("");
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
+  const [micPermission, setMicPermission] = useState("prompt");
+  const [cameraPermission, setCameraPermission] = useState("prompt");
+  const [permissionError, setPermissionError] = useState("");
 
   // Feedback
   const [feedback, setFeedback] = useState(null);
@@ -69,6 +71,24 @@ export default function InterviewSession({ params }) {
   const interviewEndedRef = useRef(false);
   const scrollRef = useRef(null);
   const apiFailCountRef = useRef(0);
+  const handleAnswerRef = useRef(null);
+  const utteranceRef = useRef(null);
+  const sessionSeedRef = useRef(null);
+
+  const logClientError = useCallback((errorMsg, context = "General Error") => {
+    axios.post("/api/log-error", {
+      sessionId: interview_id,
+      user: candidateName || "Unknown",
+      error: errorMsg,
+      context,
+    }).catch(() => {});
+  }, [interview_id, candidateName]);
+
+  const getDsaMode = useCallback((description) => {
+    const match = description?.match(/DSA mode:\s*([^.]+)\./i);
+    return match?.[1]?.trim() || "Interview Session";
+  }, []);
+  const isDsaCodingPractice = interview?.jobPosition === "DSA" && getDsaMode(interview?.jobDescription) === "Coding Practice";
 
   // Keep refs in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -90,12 +110,26 @@ export default function InterviewSession({ params }) {
 
   // --- Extract URL params ---
   useEffect(() => {
+    const nameFromContext =
+      contextUser?.name ||
+      session?.user?.user_metadata?.name ||
+      session?.user?.email?.split("@")[0] ||
+      "";
+    const emailFromContext =
+      contextUser?.email ||
+      session?.user?.email ||
+      "";
+    if (nameFromContext || emailFromContext) {
+      setCandidateName(nameFromContext);
+      setCandidateEmail(emailFromContext);
+      return;
+    }
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
       setCandidateName(p.get("name") || "");
       setCandidateEmail(p.get("email") || "");
     }
-  }, []);
+  }, [contextUser, session]);
 
   // --- Check Speech Support ---
   useEffect(() => {
@@ -104,10 +138,18 @@ export default function InterviewSession({ params }) {
       const hasRecog = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
       if (!hasSynth || !hasRecog) {
         setSpeechSupported(false);
-        setAiError("Your browser doesn't support voice. Please use Google Chrome or Microsoft Edge.");
+        if (!isDsaCodingPractice) {
+          setAiError("Your browser doesn't support voice. Please use Google Chrome or Microsoft Edge.");
+        }
       }
     }
-  }, []);
+  }, [isDsaCodingPractice]);
+
+  useEffect(() => {
+    if (isDsaCodingPractice) {
+      setAiError("");
+    }
+  }, [isDsaCodingPractice]);
 
   // --- Fetch interview ---
   useEffect(() => {
@@ -208,7 +250,9 @@ export default function InterviewSession({ params }) {
       if (e.error === "no-speech") {
         if (!interviewEndedRef.current) setTimeout(() => startListening(), 500);
       } else if (e.error === "not-allowed") {
-        setAiError("Microphone access denied. Please allow mic and refresh.");
+        const msg = "Microphone access denied. Please allow mic and refresh.";
+        setAiError(msg);
+        logClientError(msg, "Speech Recognition (not-allowed)");
       }
     };
 
@@ -234,10 +278,13 @@ export default function InterviewSession({ params }) {
         duration: interview?.duration,
         userName: candidateName,
         sessionId: interview_id,
+        sessionSeed: sessionSeedRef.current,
       });
 
       if (res.data?.warning === "API_KEY_INVALID") {
-        setAiError("OpenRouter API key issue — please update your .env.local OPENROUTER_API_KEY");
+        const msg = "Groq/OpenRouter API key issue — please update your .env.local";
+        setAiError(msg);
+        logClientError(msg, "AI Conversation Request (API_KEY_INVALID)");
       }
 
       if (res.data?.success && res.data?.message) {
@@ -248,15 +295,10 @@ export default function InterviewSession({ params }) {
         setQuestionCount(prev => prev + 1);
         setAiThinking(false);
 
-        const lower = aiText.toLowerCase();
-        if (lower.includes("wraps up") || lower.includes("end of our session") || lower.includes("that concludes") || lower.includes("best of luck")) {
+        if (!isDsaCodingPractice) {
           await speak(aiText);
-          setEndReason("Practice session completed!");
-          setInterviewEnded(true);
-          return;
+          if (!interviewEndedRef.current) startListening();
         }
-        await speak(aiText);
-        if (!interviewEndedRef.current) startListening();
       } else {
         throw new Error(res.data?.error || "No response");
       }
@@ -265,18 +307,20 @@ export default function InterviewSession({ params }) {
       setAiThinking(false);
 
       if (apiFailCountRef.current >= 3) {
-        setAiError("AI service unavailable. Ending session with current feedback.");
-        endInterview("AI service unavailable — session ended.");
+        const msg = "AI service unavailable. Please try again in a moment.";
+        setAiError(msg);
+        logClientError(err.message, "AI Conversation Request (Max Retries)");
         return;
       }
 
       setAiError(`Connection issue (attempt ${apiFailCountRef.current}/3) — retrying...`);
+      logClientError(err.message, `AI Conversation Request (Attempt ${apiFailCountRef.current})`);
       setTimeout(() => {
         setAiError("");
         if (!interviewEndedRef.current) startListening();
       }, 2000);
     }
-  }, [interview, candidateName, speak, startListening]);
+  }, [interview, candidateName, speak, startListening, isDsaCodingPractice]);
 
   // --- Handle code sharing from editor ---
   const handleShareCode = useCallback((code, language) => {
@@ -285,21 +329,68 @@ export default function InterviewSession({ params }) {
     processStudentAnswer(codeMsg);
   }, [interviewStarted, processStudentAnswer]);
 
+  useEffect(() => {
+    handleAnswerRef.current = processStudentAnswer;
+  }, [processStudentAnswer]);
+
   // --- Start Interview ---
+  const requestPermissions = useCallback(async () => {
+    setPermissionError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMicPermission("granted");
+      setCameraPermission("granted");
+      setPermissionsChecked(true);
+      return true;
+    } catch (err) {
+      setPermissionsChecked(true);
+      setMicPermission("denied");
+      setCameraPermission("denied");
+      setPermissionError("Microphone and camera access are required to start the session.");
+      return false;
+    }
+  }, []);
+
   const startInterview = useCallback(async () => {
-    if (!interview || !speechSupported) return;
+    if (!interview) return;
+    if (!isDsaCodingPractice) {
+      if (!speechSupported) return;
+      const hasPermissions = await requestPermissions();
+      if (!hasPermissions) return;
+    }
     setInterviewStarted(true);
     setTimerActive(true);
     setAiError("");
 
     const category = interview.jobPosition || "Technical";
-    const firstQ = {
-      "System Design": "Let's start with a classic one. How would you design a URL shortening service like bit.ly? Walk me through the high-level architecture and the key components.",
-      "DSA": "Let's warm up! Can you explain the difference between time complexity and space complexity? Then tell me — what's the time complexity of searching in a sorted array, and how would you optimize it?",
-      "Development": "Let's start with something practical. If you were building a full-stack web app with React and Node.js, how would you structure the project? What tools and patterns would you use?",
-      "Behavioral": "Tell me about yourself. What got you into tech, and what kind of engineering role are you most excited about?",
-    };
-    const q = firstQ[category] || "Tell me about yourself and your technical background.";
+    if (!sessionSeedRef.current) {
+      sessionSeedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+    let q = "Tell me about yourself and your technical background.";
+    try {
+      const res = await axios.post("/api/ai-conversation", {
+        messages: [{ role: "user", content: "Start the interview with your first question only." }],
+        category,
+        description: interview?.jobDescription,
+        duration: interview?.duration,
+        userName: candidateName,
+        sessionId: interview_id,
+        sessionSeed: sessionSeedRef.current,
+      });
+      if (res.data?.success && res.data?.message) {
+        q = res.data.message;
+      }
+    } catch {
+      // Keep fallback question if AI is unavailable
+    }
+    if (isDsaCodingPractice) {
+      setMessages([{ role: "assistant", content: q }]);
+      setConversation(`AI Coach: ${q}`);
+      setQuestionCount(1);
+      return;
+    }
+
     const coachName = voiceGender === "female" ? "Sarah" : "Alex";
     const greeting = `Hi ${candidateName || "there"}! I'm ${coachName}, your AI interview coach. Welcome to your ${category} practice session. Let's make this a great one! ${q}`;
 
@@ -307,14 +398,39 @@ export default function InterviewSession({ params }) {
     setConversation(`AI Coach: ${greeting}`);
     setQuestionCount(1);
 
-    // Auto-show code editor for DSA/Development
-    if (category === "DSA" || category === "Development") {
-      setShowCodeEditor(true);
-    }
-
     await speak(greeting);
     if (!interviewEndedRef.current) startListening();
-  }, [interview, candidateName, speechSupported, speak, startListening, voiceGender]);
+  }, [interview, candidateName, speechSupported, speak, startListening, voiceGender, requestPermissions, isDsaCodingPractice]);
+
+  const fetchNextCodingProblem = useCallback(async () => {
+    if (!interview || interviewEndedRef.current) return;
+    setAiThinking(true);
+    const userMsg = { role: "user", content: "Next coding problem only. Keep the exact LeetCode-style format." };
+    const updated = [...messagesRef.current, userMsg];
+    setMessages(updated);
+    try {
+      const res = await axios.post("/api/ai-conversation", {
+        messages: updated,
+        category: interview?.jobPosition,
+        description: interview?.jobDescription,
+        duration: interview?.duration,
+        userName: candidateName,
+        sessionId: interview_id,
+        sessionSeed: sessionSeedRef.current,
+      });
+      if (res.data?.success && res.data?.message) {
+        const aiText = res.data.message;
+        setMessages((prev) => [...prev, { role: "assistant", content: aiText }]);
+        setConversation((prev) => prev + `\nAI Coach: ${aiText}`);
+        setQuestionCount((prev) => prev + 1);
+      }
+    } catch (err) {
+      setAiError("Failed to load the next problem. Please try again.");
+      logClientError(err.message, "AI Conversation Request (Next Problem)");
+    } finally {
+      setAiThinking(false);
+    }
+  }, [interview, candidateName, interview_id, logClientError]);
 
   // --- End interview ---
   const endInterview = useCallback((reason) => {
@@ -403,7 +519,6 @@ export default function InterviewSession({ params }) {
           const next = prev + 1;
           setTabSwitchWarning(`Tab switch detected! Warning ${next}/3`);
           setTimeout(() => setTabSwitchWarning(""), 3000);
-          if (next >= 3) endInterview("Stopped: Tab switching detected 3 times.");
           return next;
         });
       }
@@ -430,9 +545,9 @@ export default function InterviewSession({ params }) {
           const preds = await model.detect(videoRef.current);
           let persons = 0, phone = false, book = false;
           preds.forEach(p => { if (p.class === "person" && p.score > 0.7) persons++; if (p.class === "cell phone") phone = true; if (p.class === "book") book = true; });
-          if (persons > 1) endInterview("Stopped: Multiple persons detected.");
-          else if (phone) { setObjectWarning("Phone detected!"); setObjectWarningCount(p => { if (p+1>=3) endInterview("Stopped: Phone detected 3 times."); return p+1; }); setTimeout(() => setObjectWarning(""), 3000); }
-          else if (book) { setObjectWarning("Book detected!"); setObjectWarningCount(p => { if (p+1>=3) endInterview("Stopped: Book detected 3 times."); return p+1; }); setTimeout(() => setObjectWarning(""), 3000); }
+          if (persons > 1) setObjectWarning("Multiple persons detected.");
+          else if (phone) { setObjectWarning("Phone detected!"); setObjectWarningCount(p => p + 1); setTimeout(() => setObjectWarning(""), 3000); }
+          else if (book) { setObjectWarning("Book detected!"); setObjectWarningCount(p => p + 1); setTimeout(() => setObjectWarning(""), 3000); }
           else setObjectWarning("");
         } catch {}
       }, 2000);
@@ -449,6 +564,93 @@ export default function InterviewSession({ params }) {
     }
   }, [interviewEnded, feedbackSaved, router]);
 
+  const category = interview?.jobPosition || "Technical";
+  const systemTypeMatch = interview?.jobDescription?.match(/System type:\s*([^.]+)\./i);
+  const systemType = systemTypeMatch?.[1]?.trim() || "General";
+  const dsaMode = getDsaMode(interview?.jobDescription);
+  const showCodeEditor = isDsaCodingPractice;
+  const currentPrompt = [...messages].reverse().find((msg) => msg.role === "assistant")?.content;
+  const effectiveDuration = isDsaCodingPractice ? "60 Minutes" : (interview?.duration || "-");
+
+  const parseProblem = (text = "") => {
+    if (!text) return null;
+    const labels = new Set([
+      "Title",
+      "Difficulty",
+      "Topics",
+      "Description",
+      "Input",
+      "Output",
+      "Examples",
+      "Constraints",
+      "Test Cases",
+    ]);
+    const sections = {
+      Title: [],
+      Difficulty: [],
+      Topics: [],
+      Description: [],
+      Input: [],
+      Output: [],
+      Examples: [],
+      Constraints: [],
+      "Test Cases": [],
+    };
+    let current = null;
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      const match = line.match(/^([A-Za-z ]+):\s*(.*)$/);
+      if (match && labels.has(match[1])) {
+        current = match[1];
+        if (match[2]) sections[current].push(match[2]);
+      } else if (current) {
+        sections[current].push(line);
+      }
+    }
+
+    const clean = (arr) => arr.join("\n").trim();
+    const title = clean(sections.Title);
+    const difficulty = clean(sections.Difficulty);
+    const topics = clean(sections.Topics);
+    const description = clean(sections.Description);
+    const input = clean(sections.Input);
+    const output = clean(sections.Output);
+    const examples = clean(sections.Examples);
+    const constraints = clean(sections.Constraints);
+    const testCases = clean(sections["Test Cases"]);
+
+    return {
+      title,
+      difficulty,
+      topics: topics ? topics.split(/\s*,\s*/).filter(Boolean) : [],
+      description,
+      input,
+      output,
+      examples,
+      constraints,
+      testCases,
+    };
+  };
+
+  const parsedProblem = parseProblem(currentPrompt);
+  const hasParsedProblem = parsedProblem && (
+    parsedProblem.title ||
+    parsedProblem.description ||
+    parsedProblem.examples ||
+    parsedProblem.constraints ||
+    parsedProblem.testCases
+  );
+  const problemMeta = hasParsedProblem ? { title: parsedProblem.title, input: parsedProblem.input } : null;
+  const testSpec = hasParsedProblem ? { examples: parsedProblem.examples, testCases: parsedProblem.testCases } : null;
+
+  const handleTestResults = useCallback((payload) => {
+    if (!payload?.summaryText) return;
+    const title = parsedProblem?.title || "Coding Problem";
+    const resultText = `Test Results for ${title}: ${payload.summaryText}`;
+    setConversation((prev) => prev + `\n${resultText}`);
+    setMessages((prev) => [...prev, { role: "user", content: resultText }]);
+  }, [parsedProblem?.title]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -462,9 +664,6 @@ export default function InterviewSession({ params }) {
       </div>
     );
   }
-
-  const category = interview?.jobPosition || "Technical";
-  const showCodeBtn = category === "DSA" || category === "Development";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
@@ -485,72 +684,244 @@ export default function InterviewSession({ params }) {
           )}
         </div>
         <div className="flex items-center gap-3">
-          {/* Code editor toggle */}
-          {showCodeBtn && interviewStarted && !interviewEnded && (
-            <button onClick={() => setShowCodeEditor(!showCodeEditor)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
-                showCodeEditor ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-              }`}>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
-              {showCodeEditor ? "Hide Code" : "Code Editor"}
-            </button>
-          )}
           <div className="font-mono text-sm">
-            <TimerComponent active={timerActive} duration={interview?.duration} onComplete={() => endInterview("Time is up!")} interviewEnded={interviewEnded} />
+            <TimerComponent active={timerActive} duration={effectiveDuration} onComplete={() => endInterview("Time is up!")} interviewEnded={interviewEnded} />
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-3 md:px-6 py-4">
+        {!isDsaCodingPractice && (
+          <div className="max-w-7xl mx-auto mb-4">
+            <div className="bg-white rounded-2xl border shadow-sm p-4 md:p-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Session Focus</p>
+                  <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 mt-1">
+                    {category} Interview
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {category === "System Design" ? `${systemType} track` : "Structured practice session"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">{category}</span>
+                  {category === "System Design" && (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">{systemType}</span>
+                  )}
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">{effectiveDuration} min</span>
+                </div>
+              </div>
+              {category === "System Design" && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Focus</div>
+                    <div className="text-sm font-bold text-gray-900">Scalability</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Trade-offs</div>
+                    <div className="text-sm font-bold text-gray-900">Latency vs Cost</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Reliability</div>
+                    <div className="text-sm font-bold text-gray-900">Failover</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Data</div>
+                    <div className="text-sm font-bold text-gray-900">Consistency</div>
+                  </div>
+                </div>
+              )}
+              {category === "Development" && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Frontend</div>
+                    <div className="text-sm font-bold text-gray-900">React + State</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Backend</div>
+                    <div className="text-sm font-bold text-gray-900">APIs + Auth</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Debugging</div>
+                    <div className="text-sm font-bold text-gray-900">Failures</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                    <div className="text-[11px] text-gray-500 font-semibold uppercase">Performance</div>
+                    <div className="text-sm font-bold text-gray-900">Latency</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {/* Alerts */}
-        {(objectWarning || tabSwitchWarning || cameraError || aiError) && (
+        {(objectWarning || tabSwitchWarning || cameraError || aiError || permissionError) && (
           <div className="max-w-4xl mx-auto mb-3 space-y-2">
             {aiError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>{aiError}</div>}
             {cameraError && <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm">{cameraError}</div>}
             {objectWarning && <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-sm font-medium">{objectWarning}</div>}
             {tabSwitchWarning && <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-2.5 rounded-xl text-sm font-medium">{tabSwitchWarning}</div>}
+            {permissionError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-sm">{permissionError}</div>}
           </div>
         )}
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-7xl mx-auto">
-          {/* Left Column — Camera + Status */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-              <div className="aspect-[4/3] bg-gray-900 relative">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[11px] px-2 py-0.5 rounded-md backdrop-blur-sm">{candidateName || "You"}</div>
-                {interviewStarted && !interviewEnded && (
-                  <div className="absolute top-2 right-2">
-                    <div className={`w-3 h-3 rounded-full ${isListening ? "bg-green-500 animate-pulse" : isSpeaking ? "bg-blue-500 animate-pulse" : "bg-gray-400"}`}></div>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5">
-                    {isListening && <span className="flex items-center gap-1 text-emerald-600 font-semibold"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Listening</span>}
-                    {isSpeaking && <span className="flex items-center gap-1 text-blue-600 font-semibold"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>Speaking</span>}
-                    {aiThinking && <span className="flex items-center gap-1 text-purple-600 font-semibold"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>Thinking</span>}
-                    {!isListening && !isSpeaking && !aiThinking && interviewStarted && !interviewEnded && <span className="text-gray-400">Idle</span>}
-                  </div>
-                  {tabSwitchCount > 0 && <span className="text-red-500 font-semibold">{tabSwitchCount}/3</span>}
+        {isDsaCodingPractice ? (
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-sm border p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+                  Coding Practice
+                </h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-gray-400">LeetCode-style coding</span>
+                  {!interviewStarted && !interviewEnded && (
+                    <button onClick={startInterview} disabled={!interview}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-2 text-xs shadow-sm shadow-blue-200">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+                      Start Coding Practice
+                    </button>
+                  )}
+                  {interviewStarted && !interviewEnded && (
+                    <div className="flex items-center gap-2">
+                      <button onClick={fetchNextCodingProblem}
+                        className="px-3 py-2 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition">
+                        Take Another Test
+                      </button>
+                      <button onClick={() => { if (window.confirm("End the session?")) endInterview("Ended by user."); }}
+                        className="px-3 py-2 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg transition">
+                        End Session
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {interviewStarted && (
-                  <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                    <span>Q: {questionCount}</span>
-                    <span>&middot;</span>
-                    <span>{category}</span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-360px)]">
+                <div className="bg-[#111111] rounded-xl border border-[#222222] overflow-hidden flex flex-col">
+                  <div className="px-4 py-2 border-b border-[#222222] flex items-center gap-2">
+                    <span className="text-[12px] text-gray-200 font-semibold">Description</span>
+                    <span className="text-[10px] text-gray-500">Problem</span>
                   </div>
-                )}
+                  <div className="flex-1 overflow-y-auto px-4 py-3 text-sm text-gray-200 leading-relaxed">
+                    {!currentPrompt && "Click Start to load your first problem."}
+                    {currentPrompt && !hasParsedProblem && (
+                      <div className="whitespace-pre-wrap">{currentPrompt}</div>
+                    )}
+                    {currentPrompt && hasParsedProblem && (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-lg font-bold text-white">
+                            {parsedProblem.title || "Coding Problem"}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            {parsedProblem.difficulty && (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-900/40 text-emerald-200 border border-emerald-700/40">
+                                {parsedProblem.difficulty}
+                              </span>
+                            )}
+                            {parsedProblem.topics.map((topic) => (
+                              <span key={topic} className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-200 border border-slate-700">
+                                {topic}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {parsedProblem.description && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Description</div>
+                            <div className="whitespace-pre-wrap text-slate-100">{parsedProblem.description}</div>
+                          </div>
+                        )}
+
+                        {(parsedProblem.input || parsedProblem.output) && (
+                          <div className="grid grid-cols-1 gap-3">
+                            {parsedProblem.input && (
+                              <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-3">
+                                <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Input</div>
+                                <pre className="whitespace-pre-wrap text-xs text-slate-200 font-mono">{parsedProblem.input}</pre>
+                              </div>
+                            )}
+                            {parsedProblem.output && (
+                              <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-3">
+                                <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Output</div>
+                                <pre className="whitespace-pre-wrap text-xs text-slate-200 font-mono">{parsedProblem.output}</pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {parsedProblem.examples && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Examples</div>
+                            <pre className="whitespace-pre-wrap text-xs text-slate-200 font-mono bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-3">{parsedProblem.examples}</pre>
+                          </div>
+                        )}
+
+                        {parsedProblem.constraints && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Constraints</div>
+                            <pre className="whitespace-pre-wrap text-xs text-slate-200 font-mono bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-3">{parsedProblem.constraints}</pre>
+                          </div>
+                        )}
+
+                        {parsedProblem.testCases && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Test Cases</div>
+                            <pre className="whitespace-pre-wrap text-xs text-slate-200 font-mono bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-3">{parsedProblem.testCases}</pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="h-full">
+                  <CodeEditor onShareCode={handleShareCode} visible={true} fullHeight={true} problemMeta={problemMeta} testSpec={testSpec} onTestResults={handleTestResults} />
+                </div>
               </div>
             </div>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-7xl mx-auto">
+            {/* Left Column — Camera + Status */}
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                <div className="aspect-[4/3] bg-gray-900 relative">
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+                  <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[11px] px-2 py-0.5 rounded-md backdrop-blur-sm">{candidateName || "You"}</div>
+                  {interviewStarted && !interviewEnded && (
+                    <div className="absolute top-2 right-2">
+                      <div className={`w-3 h-3 rounded-full ${isListening ? "bg-green-500 animate-pulse" : isSpeaking ? "bg-blue-500 animate-pulse" : "bg-gray-400"}`}></div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {isListening && <span className="flex items-center gap-1 text-emerald-600 font-semibold"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Listening</span>}
+                      {isSpeaking && <span className="flex items-center gap-1 text-blue-600 font-semibold"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>Speaking</span>}
+                      {aiThinking && <span className="flex items-center gap-1 text-purple-600 font-semibold"><span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>Thinking</span>}
+                      {!isListening && !isSpeaking && !aiThinking && interviewStarted && !interviewEnded && <span className="text-gray-400">Idle</span>}
+                    </div>
+                    {tabSwitchCount > 0 && <span className="text-red-500 font-semibold">{tabSwitchCount}/3</span>}
+                  </div>
+                  {interviewStarted && (
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                      <span>Q: {questionCount}</span>
+                      <span>&middot;</span>
+                      <span>{category}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Center — Chat */}
-          <div className={showCodeEditor ? "lg:col-span-5" : "lg:col-span-9"}>
-            <div className="bg-white rounded-2xl shadow-sm border flex flex-col" style={{ height: showCodeEditor ? "580px" : "520px" }}>
+            {/* Center — Chat */}
+            <div className={showCodeEditor ? "lg:col-span-5" : "lg:col-span-9"}>
+              <div className="bg-white rounded-2xl shadow-sm border flex flex-col" style={{ height: showCodeEditor ? "580px" : "520px" }}>
               {/* Chat Header */}
               <div className="px-4 py-3 border-b flex items-center justify-between bg-gradient-to-r from-white to-blue-50/30">
                 <div className="flex items-center gap-3">
@@ -560,7 +931,7 @@ export default function InterviewSession({ params }) {
                   <div>
                     <div className="font-semibold text-sm text-gray-800">{voiceGender === "female" ? "Sarah" : "Alex"} — AI Coach</div>
                     <div className="text-[11px] text-gray-400">
-                      {isSpeaking ? "Speaking..." : aiThinking ? "Analyzing your answer..." : isListening ? "🎙️ Your turn — speak now" : interviewStarted ? "Ready" : "Select voice & start"}
+                      {isSpeaking ? "Speaking..." : aiThinking ? "Analyzing your answer..." : isListening ? "🎙️ Your turn — speak now" : interviewStarted ? "Ready" : "Review the guidelines before starting"}
                     </div>
                   </div>
                 </div>
@@ -583,35 +954,33 @@ export default function InterviewSession({ params }) {
                       <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center shadow-inner">
                         <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-1">Ready for your {category} session</h3>
-                      <p className="text-xs text-gray-400 mb-6">Choose your interviewer and begin</p>
+                      <h3 className="text-lg font-bold text-gray-800 mb-1">Before you start</h3>
+                      <p className="text-xs text-gray-400 mb-4">{isDsaCodingPractice ? "Coding practice guidelines" : "Standard interview guidelines"}</p>
 
-                      {/* Voice Selector */}
-                      <div className="flex gap-3 justify-center mb-2">
-                        <button onClick={() => setVoiceGender("female")}
-                          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all border-2 ${
-                            voiceGender === "female" ? "border-pink-400 bg-pink-50 text-pink-700 shadow-sm shadow-pink-100" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
-                          }`}>
-                          <span className="text-xl">👩‍💼</span>
-                          <div className="text-left">
-                            <div className="font-semibold">Sarah</div>
-                            <div className="text-[10px] opacity-60">Female Voice</div>
-                          </div>
-                        </button>
-                        <button onClick={() => setVoiceGender("male")}
-                          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all border-2 ${
-                            voiceGender === "male" ? "border-blue-400 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
-                          }`}>
-                          <span className="text-xl">👨‍💼</span>
-                          <div className="text-left">
-                            <div className="font-semibold">Alex</div>
-                            <div className="text-[10px] opacity-60">Male Voice</div>
-                          </div>
-                        </button>
+                      <div className="text-left text-sm text-gray-600 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        {isDsaCodingPractice ? (
+                          <ul className="space-y-2">
+                            <li>• Focus on writing correct, clean code for each prompt.</li>
+                            <li>• Explain your approach briefly before coding.</li>
+                            <li>• Mention time and space complexity.</li>
+                            <li>• Test with edge cases and explain your reasoning.</li>
+                            <li>• If stuck, outline a brute force solution first.</li>
+                          </ul>
+                        ) : (
+                          <ul className="space-y-2">
+                            <li>• Make sure you are in a quiet place with a stable internet connection.</li>
+                            <li>• Keep your camera and microphone on for the entire session.</li>
+                            <li>• Think out loud and explain your reasoning clearly.</li>
+                            <li>• Ask clarifying questions if requirements are unclear.</li>
+                            <li>• Keep answers concise and structured; use examples where helpful.</li>
+                          </ul>
+                        )}
                       </div>
-                      {showCodeBtn && (
-                        <p className="text-[10px] text-gray-400 mt-3">💡 Code editor available for {category}</p>
-                      )}
+                      <div className="mt-3 text-left text-xs text-gray-500">
+                        {isDsaCodingPractice
+                          ? "Coding practice mode: microphone is not required."
+                          : `Permissions status: Mic ${micPermission} · Camera ${cameraPermission}`}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -714,27 +1083,9 @@ export default function InterviewSession({ params }) {
                 {feedback.feedback?.summary && <p className="text-sm text-gray-700">{feedback.feedback.summary}</p>}
               </div>
             )}
-          </div>
-
-          {/* Right Column — Code Editor (when visible) */}
-          {showCodeEditor && (
-            <div className="lg:col-span-4">
-              <div className="sticky top-16">
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
-                    Code Editor
-                  </h3>
-                  <span className="text-[10px] text-gray-400">Write code & send for AI review</span>
-                </div>
-                <CodeEditor onShareCode={handleShareCode} visible={true} />
-                <div className="mt-2 px-1 text-[10px] text-gray-400 leading-relaxed">
-                  💡 Write your solution, then click "Send to AI for Review" — the AI will analyze your code and give feedback via voice.
-                </div>
-              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

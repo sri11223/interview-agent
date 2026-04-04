@@ -1,0 +1,475 @@
+[2026-04-02T02:03:35.108Z] [AI Conversation API | Attempt: 1, Model: llama3-8b-8192]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:202:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-02T02:03:35.727Z] [AI Conversation API | Attempt: 2, Model: llama3-70b-8192]
+Details: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:202:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-02T02:03:48.490Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T04:51:50.501Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T04:53:31.555Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T04:54:22.154Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T04:55:53.152Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T05:13:52.125Z] [AI Conversation API | Attempt: 1, Model: llama3-8b-8192]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:202:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T05:13:52.722Z] [AI Conversation API | Attempt: 2, Model: llama3-70b-8192]
+Details: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:202:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T05:28:58.100Z] [AI Conversation API | Attempt: 1, Model: llama3-8b-8192]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:283:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T05:28:58.704Z] [AI Conversation API | Attempt: 2, Model: llama3-70b-8192]
+Details: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:283:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T05:29:44.577Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:13:15.199Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:17:42.548Z] [AI Conversation API | Attempt: 1, Model: llama3-8b-8192]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:287:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:17:43.189Z] [AI Conversation API | Attempt: 2, Model: llama3-70b-8192]
+Details: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-70b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-conversation/route.jsx:287:36)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:17:54.852Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:25:47.230Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:27:00.405Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------
+[2026-04-03T06:32:27.950Z] [AI Feedback Generation Failed, falling back to manual scoring]
+Details: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+Stack: Error: 400 The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.
+    at APIError.generate (webpack-internal:///(rsc)/./node_modules/openai/core/error.mjs:61:20)
+    at OpenAI.makeStatusError (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:196:71)
+    at OpenAI.makeRequest (webpack-internal:///(rsc)/./node_modules/openai/client.mjs:341:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./app/api/ai-feedback/route.jsx:256:32)
+    at async AppRouteRouteModule.do (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:33891)
+    at async AppRouteRouteModule.handle (E:\interview-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:26:41254)
+    at async doRender (E:\interview-agent\node_modules\next\dist\server\base-server.js:1513:42)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1915:28)
+    at async DevServer.renderPageComponent (E:\interview-agent\node_modules\next\dist\server\base-server.js:2393:24)
+    at async DevServer.renderToResponseImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:2430:32)
+    at async DevServer.pipeImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:1003:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\interview-agent\node_modules\next\dist\server\next-server.js:304:17)
+    at async DevServer.handleRequestImpl (E:\interview-agent\node_modules\next\dist\server\base-server.js:895:17)
+    at async E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:371:20
+    at async Span.traceAsyncFn (E:\interview-agent\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (E:\interview-agent\node_modules\next\dist\server\dev\next-dev-server.js:368:24)
+    at async invokeRender (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:235:21)
+    at async handleRequest (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:426:24)
+    at async requestHandlerImpl (E:\interview-agent\node_modules\next\dist\server\lib\router-server.js:450:13)
+    at async Server.requestListener (E:\interview-agent\node_modules\next\dist\server\lib\start-server.js:158:13)
+----------------------------------------

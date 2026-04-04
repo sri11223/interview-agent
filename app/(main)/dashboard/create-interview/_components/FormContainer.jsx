@@ -82,6 +82,7 @@ function FormContainer({ selectedCategory }) {
     const [selectedLanguage, setSelectedLanguage] = useState('')
     const [selectedSystemType, setSelectedSystemType] = useState('')
     const [selectedDomain, setSelectedDomain] = useState('')
+    const [selectedDsaMode, setSelectedDsaMode] = useState('')
     const [selectedDifficulty, setSelectedDifficulty] = useState('Intermediate')
     const [duration, setDuration] = useState('')
     const [topics, setTopics] = useState('')
@@ -96,7 +97,7 @@ function FormContainer({ selectedCategory }) {
             toast.error('Please select a practice category')
             return
         }
-        if (!duration) {
+        if (!duration && !(selectedCategory === 'DSA' && selectedDsaMode === 'Coding Practice')) {
             toast.error('Please select a session duration')
             return
         }
@@ -114,19 +115,24 @@ function FormContainer({ selectedCategory }) {
             const interviewId = crypto.randomUUID()
 
             let description = `Practice category: ${selectedCategory}.`
-            if (selectedLanguage && !['System Design', 'Development'].includes(selectedCategory)) description += ` Programming language: ${selectedLanguage}.`
+            if (selectedLanguage && !['System Design', 'Development', 'DSA'].includes(selectedCategory)) description += ` Programming language: ${selectedLanguage}.`
             if (selectedSystemType && selectedCategory === 'System Design') description += ` System type: ${selectedSystemType}.`
             if (selectedDomain && selectedCategory === 'Development') description += ` Domain: ${selectedDomain}.`
+            if (selectedDsaMode && selectedCategory === 'DSA') description += ` DSA mode: ${selectedDsaMode}.`
             if (selectedDifficulty) description += ` Difficulty: ${selectedDifficulty}.`
             if (topics) description += ` Focus topics: ${topics}.`
 
             const interviewType = (selectedCategory === 'Behavioral') ? 'Behavioral' : 'Technical, Problem Solving'
 
+            const resolvedDuration = (!duration && selectedCategory === 'DSA' && selectedDsaMode === 'Coding Practice')
+                ? '60 Minutes'
+                : duration;
+
             const { error } = await supabase.from('Interviews').insert([{
                 interview_id: interviewId,
                 jobPosition: selectedCategory,
                 jobDescription: description,
-                duration: duration,
+                duration: resolvedDuration,
                 type: interviewType,
                 questionList: [],
                 userEmail: currentUser.email,
@@ -206,6 +212,45 @@ function FormContainer({ selectedCategory }) {
                                 ))}
                             </div>
                         </div>
+                    ) : selectedCategory === 'DSA' ? (
+                        <div>
+                            <h2 className='text-sm font-extrabold text-gray-700 uppercase tracking-widest mb-4'>DSA Session Type</h2>
+                            <div className='grid grid-cols-1 gap-3'>
+                                {[
+                                    {
+                                        title: 'Interview Session',
+                                        description: 'Verbal DSA interview with structured reasoning and complexity analysis.'
+                                    },
+                                    {
+                                        title: 'Coding Practice',
+                                        description: 'LeetCode-style practice flow with coding-first prompts.'
+                                    }
+                                ].map((mode) => (
+                                    <div
+                                        key={mode.title}
+                                        className={`flex items-start gap-3 px-5 py-4 rounded-xl border-2 cursor-pointer transition-all duration-200 font-bold ${
+                                            selectedDsaMode === mode.title
+                                                ? `${theme.activeBorder} ${theme.activeBg} ${theme.text} scale-[1.02]`
+                                                : 'border-gray-100 hover:border-gray-300 text-gray-600 bg-gray-50'
+                                        }`}
+                                        onClick={() => {
+                                            setSelectedDsaMode((prev) => {
+                                                const next = prev === mode.title ? '' : mode.title;
+                                                if (next === 'Coding Practice') {
+                                                    setDuration('60 Minutes');
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                    >
+                                        <div>
+                                            <div className='text-sm'>{mode.title}</div>
+                                            <div className='text-[12px] font-medium text-gray-500 mt-1'>{mode.description}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     ) : selectedCategory !== 'Behavioral' ? (
                         <div>
                             <h2 className='text-sm font-extrabold text-gray-700 uppercase tracking-widest mb-4'>Programming Language</h2>
@@ -261,21 +306,23 @@ function FormContainer({ selectedCategory }) {
                     </div>
 
                     {/* Duration */}
-                    <div>
-                        <h2 className='text-sm font-extrabold text-gray-700 uppercase tracking-widest mb-4'>Session Duration <span className='text-red-500'>*</span></h2>
-                        <Select onValueChange={(value) => setDuration(value)}>
-                            <SelectTrigger className="w-full h-14 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-0 font-bold text-gray-800 text-base">
-                                <SelectValue placeholder="Select Duration" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2 overflow-hidden shadow-xl">
-                                <SelectItem value="5 Minutes" className="font-bold py-3 text-base">5 minutes <span className="text-gray-400 font-medium">(Quick Practice)</span></SelectItem>
-                                <SelectItem value="15 Minutes" className="font-bold py-3 text-base">15 minutes <span className="text-gray-400 font-medium">(Standard)</span></SelectItem>
-                                <SelectItem value="30 Minutes" className="font-bold py-3 text-base">30 minutes <span className="text-gray-400 font-medium">(Deep Dive)</span></SelectItem>
-                                <SelectItem value="45 Minutes" className="font-bold py-3 text-base">45 minutes <span className="text-gray-400 font-medium">(Full Mock)</span></SelectItem>
-                                <SelectItem value="60 Minutes" className="font-bold py-3 text-base">1 hour <span className="text-gray-400 font-medium">(Exhaustive)</span></SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {!(selectedCategory === 'DSA' && selectedDsaMode === 'Coding Practice') && (
+                        <div>
+                            <h2 className='text-sm font-extrabold text-gray-700 uppercase tracking-widest mb-4'>Session Duration <span className='text-red-500'>*</span></h2>
+                            <Select onValueChange={(value) => setDuration(value)}>
+                                <SelectTrigger className="w-full h-14 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-0 font-bold text-gray-800 text-base">
+                                    <SelectValue placeholder="Select Duration" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-2 overflow-hidden shadow-xl">
+                                    <SelectItem value="5 Minutes" className="font-bold py-3 text-base">5 minutes <span className="text-gray-400 font-medium">(Quick Practice)</span></SelectItem>
+                                    <SelectItem value="15 Minutes" className="font-bold py-3 text-base">15 minutes <span className="text-gray-400 font-medium">(Standard)</span></SelectItem>
+                                    <SelectItem value="30 Minutes" className="font-bold py-3 text-base">30 minutes <span className="text-gray-400 font-medium">(Deep Dive)</span></SelectItem>
+                                    <SelectItem value="45 Minutes" className="font-bold py-3 text-base">45 minutes <span className="text-gray-400 font-medium">(Full Mock)</span></SelectItem>
+                                    <SelectItem value="60 Minutes" className="font-bold py-3 text-base">1 hour <span className="text-gray-400 font-medium">(Exhaustive)</span></SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                 </div>
 
             </div>

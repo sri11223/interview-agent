@@ -11,6 +11,7 @@ function InterviewFeedbackPage() {
     const [feedbackList, setFeedbackList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedFeedback, setSelectedFeedback] = useState(null);
+    const [routing, setRouting] = useState(false);
 
     useEffect(() => {
         if (user?.email) fetchAllFeedback();
@@ -63,7 +64,39 @@ function InterviewFeedbackPage() {
         return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0;
     };
 
+    const handleTakeTestAgain = async () => {
+        const interviewId = selectedFeedback?.interview_id || latestFeedback?.interview_id;
+        if (!interviewId || !user?.email) {
+            router.push('/dashboard/create-interview');
+            return;
+        }
+
+        setRouting(true);
+        try {
+            const { data, error } = await supabase
+                .from('Interviews')
+                .select('jobPosition')
+                .eq('interview_id', interviewId)
+                .eq('userEmail', user.email)
+                .single();
+
+            if (!error && data?.jobPosition) {
+                router.push(`/dashboard/create-interview?category=${encodeURIComponent(data.jobPosition)}`);
+                return;
+            }
+        } catch (err) {
+            console.error('Failed to load interview category:', err);
+        } finally {
+            setRouting(false);
+        }
+
+        router.push('/dashboard/create-interview');
+    };
+
     const fb = selectedFeedback?.feedback;
+    const latestFeedback = feedbackList?.[0];
+    const latestFb = latestFeedback?.feedback;
+    const latestAvg = getAvgScore(latestFb?.rating);
 
     if (loading) {
         return (
@@ -88,9 +121,14 @@ function InterviewFeedbackPage() {
                         <h1 className="text-2xl font-bold text-gray-900">Performance Feedback</h1>
                         <p className="text-sm text-gray-500 mt-0.5">{feedbackList.length} session{feedbackList.length !== 1 ? 's' : ''} completed</p>
                     </div>
-                    <button onClick={() => router.push('/dashboard')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
-                        Back to Dashboard
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={handleTakeTestAgain} disabled={routing} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-60">
+                            {routing ? 'Loading...' : 'Take Test Again'}
+                        </button>
+                        <button onClick={() => router.push('/dashboard')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            Back to Dashboard
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -109,6 +147,34 @@ function InterviewFeedbackPage() {
                 </div>
             ) : (
                 <div className="max-w-7xl mx-auto px-6 py-6">
+                    {/* Latest Summary */}
+                    {latestFb && (
+                        <div className="mb-6 bg-gradient-to-r from-white to-blue-50 rounded-2xl border border-blue-100 p-5 shadow-sm">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Latest Session</p>
+                                    <h2 className="text-lg font-bold text-gray-900 mt-1">
+                                        {moment(latestFeedback.created_at).format('MMM D, YYYY · h:mm A')}
+                                    </h2>
+                                    {(latestFb.recommendation || latestFb.Recommendation) && (
+                                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold ${getBadgeStyle(latestFb.recommendation || latestFb.Recommendation)}`}>
+                                            {latestFb.recommendation || latestFb.Recommendation}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-center bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm">
+                                        <div className={`text-3xl font-bold ${getScoreColor(latestAvg)}`}>{latestAvg}</div>
+                                        <div className="text-xs text-gray-500">Avg Score</div>
+                                    </div>
+                                    <div className="text-center bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm">
+                                        <div className="text-3xl font-bold text-gray-900">{latestFb.metadata?.questionCount || 0}</div>
+                                        <div className="text-xs text-gray-500">Questions</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Sessions List */}
                         <div className="lg:col-span-4">

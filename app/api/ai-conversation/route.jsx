@@ -1,68 +1,143 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { logError } from '@/lib/logger';
 
 // ========== OFFLINE QUESTION BANKS (used when API key is invalid/missing) ==========
 const OFFLINE_QUESTIONS = {
   'DSA': [
-    "Good attempt! Now, given an array of integers, how would you find two numbers that add up to a specific target? What data structure would make this efficient?",
-    "Nice thinking! Let's move to linked lists. How would you detect if a linked list has a cycle? Can you describe the algorithm?",
-    "Alright, let's try trees. How would you check if a binary tree is balanced? What's the time complexity of your approach?",
-    "Good! Now a classic — can you explain how merge sort works step by step? What's its time and space complexity?",
-    "Let's try dynamic programming. How would you solve the climbing stairs problem — if you can take 1 or 2 steps, how many ways to reach step N?",
-    "Nice! How would you implement a stack that supports push, pop, and getMin — all in O(1) time?",
-    "Here's a string problem — how would you check if two strings are anagrams of each other? What's the most efficient way?",
-    "Let's do graphs. Can you explain the difference between BFS and DFS? When would you use each one?",
-    "Good work! How would you find the longest substring without repeating characters? Walk me through your approach.",
-    "Last one — how would you reverse a linked list iteratively? What pointers do you need to keep track of?",
-    "That wraps up our DSA session! You covered arrays, trees, sorting, and more. Great practice — keep solving problems daily. Best of luck!",
+    "Given a sorted array and a target, how would you find the first and last occurrence of the target?",
+    "How would you detect a cycle in a linked list and locate the cycle start?",
+    "Explain how to find the lowest common ancestor in a binary search tree.",
+    "How would you compute the number of islands in a 2D grid?",
+    "Describe an O(n) solution to find the maximum subarray sum.",
+    "How would you design an LRU cache with O(1) operations?",
+    "Explain how to topologically sort a directed acyclic graph.",
+    "How would you find the k-th smallest element in an unsorted array?",
+    "Describe a dynamic programming approach for the longest increasing subsequence.",
+    "How would you implement a monotonic stack to solve a next greater element problem?",
+  ],
+  'DSA:Coding Practice': [
+    "Title: Two Sum\nDifficulty: Easy\nTopics: Array, Hash Map\nDescription:\nGiven an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\nYou may assume that each input has exactly one solution, and you may not use the same element twice.\nYou can return the answer in any order.\nInput:\nnums: integer[]\ntarget: integer\nOutput:\ninteger[] (two indices)\nExamples:\n1) Input: nums = [2,7,11,15], target = 9\n   Output: [0,1]\n2) Input: nums = [3,2,4], target = 6\n   Output: [1,2]\nConstraints:\n- 2 <= nums.length <= 10^5\n- -10^9 <= nums[i] <= 10^9\n- -10^9 <= target <= 10^9\nTest Cases:\n- Input: nums = [3,3], target = 6 -> Output: [0,1]\n- Input: nums = [-1,-2,-3,-4,-5], target = -8 -> Output: [2,4]",
+    "Title: Valid Parentheses\nDifficulty: Easy\nTopics: Stack\nDescription:\nGiven a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\nAn input string is valid if open brackets are closed by the same type of brackets and in the correct order.\nInput:\ns: string\nOutput:\nboolean\nExamples:\n1) Input: s = \"()\"\n   Output: true\n2) Input: s = \"()[]{}\"\n   Output: true\n3) Input: s = \"(]\"\n   Output: false\nConstraints:\n- 1 <= s.length <= 10^4\n- s consists of only parentheses characters\nTest Cases:\n- Input: s = \"{[]}\" -> Output: true\n- Input: s = \"([)]\" -> Output: false",
+    "Title: Merge Two Sorted Lists\nDifficulty: Easy\nTopics: Linked List, Two Pointers\nDescription:\nYou are given the heads of two sorted linked lists list1 and list2. Merge the two lists into one sorted list. The list should be made by splicing together the nodes of the first two lists.\nInput:\nlist1: ListNode\nlist2: ListNode\nOutput:\nListNode (merged head)\nExamples:\n1) Input: list1 = [1,2,4], list2 = [1,3,4]\n   Output: [1,1,2,3,4,4]\n2) Input: list1 = [], list2 = []\n   Output: []\nConstraints:\n- The number of nodes in both lists is in the range [0, 10^4]\n- -10^5 <= Node.val <= 10^5\nTest Cases:\n- Input: list1 = [2], list2 = [1,3] -> Output: [1,2,3]\n- Input: list1 = [5,6], list2 = [] -> Output: [5,6]",
   ],
   'Development': [
-    "Good answer! Now tell me — what's the difference between let, const, and var in JavaScript? When would you use each?",
-    "Nice! Can you explain how closures work in JavaScript? Give me a practical example of when you'd use one.",
-    "Let's talk React. What's the difference between useState and useEffect? When does useEffect run?",
-    "Good! How would you handle API calls in a React component? What about loading states and error handling?",
-    "Now Node.js — can you explain the event loop? What makes Node.js non-blocking?",
-    "Let's talk APIs. What's the difference between REST and GraphQL? When would you choose one over the other?",
-    "How would you handle authentication in a web app? Explain the JWT flow from login to protected route access.",
-    "Database question — what's the difference between SQL and NoSQL databases? Give an example use case for each.",
-    "How would you optimize a slow React application? What tools and techniques would you use?",
-    "Last question — explain the difference between git merge and git rebase. When would you use each?",
-    "That wraps up our Development session! You covered JavaScript, React, Node.js, databases, and more. Great practice — keep building projects. Best of luck!",
+    "Explain how JavaScript's event loop handles microtasks and macrotasks.",
+    "How would you design a reusable React hook for form validation?",
+    "Describe how you would implement optimistic UI updates in a React app.",
+    "What are the trade-offs between SSR, SSG, and CSR in a Next.js app?",
+    "How would you structure an Express API with layered architecture?",
+    "Explain how you would secure a REST API against common attacks.",
+    "How would you implement file uploads with progress tracking on the client?",
+    "What strategies do you use to reduce bundle size in a frontend app?",
+    "Describe how database indexing improves query performance and when it hurts.",
+    "How would you design a CI pipeline for a full-stack app with automated tests?",
   ],
   'System Design': [
-    "Good thinking! Now, how would you design a chat application like WhatsApp? What are the key components?",
-    "Nice! Let's talk databases — when would you use SQL vs NoSQL for a social media app? How would you handle scaling?",
-    "How would you implement a caching layer? When would you use Redis vs Memcached?",
-    "Good! How would you design a notification system that can handle millions of users? What queue system would you use?",
-    "Let's talk about load balancing. What strategies exist, and how would you choose between them?",
-    "How would you design a file storage service like Google Drive? Think about upload, download, and sharing.",
-    "What's the CAP theorem? How does it affect your database choices in a distributed system?",
-    "How would you handle rate limiting for an API? What algorithms can you use?",
-    "How would you design a search autocomplete feature? What data structures would power it?",
-    "Last one — how would you monitor and log errors in a microservices architecture? What tools would you use?",
-    "That wraps up our System Design session! You covered scaling, databases, caching, and distributed systems. Great practice — keep studying system design patterns. Best of luck!",
+    "How would you design a feature flag service used by thousands of services?",
+    "Design a metrics ingestion pipeline for real-time dashboards.",
+    "How would you build a multi-tenant SaaS platform with isolation and billing?",
+    "Design a recommendation system for an e-commerce homepage.",
+    "How would you architect a document collaboration editor with real-time updates?",
+    "Design a log aggregation system with search and retention policies.",
+    "How would you design a global session store for authentication?",
+    "Design a media processing pipeline for image and video transformations.",
+    "How would you handle geo-distributed data and regional compliance?",
+    "Design a high-throughput analytics event tracking system.",
+  ],
+  'System Design:Low-Level Design (LLD)': [
+    "Design class structures for a movie ticket booking system.",
+    "Model the core classes for a food recipe planner with shopping lists.",
+    "Create a class design for a ride-sharing dispatch engine.",
+    "Design the classes for a cloud storage client sync service.",
+    "Model an online exam system with proctoring and question pools.",
+    "Design classes for a banking ledger with accounts and transactions.",
+    "Create a class model for a smart thermostat scheduling system.",
+    "Design the classes for an issue tracking system with workflows.",
+    "Model a digital marketplace with offers, bids, and order fulfillment.",
+    "Design the core classes for a multiplayer game lobby and matchmaking.",
+  ],
+  'System Design:High-Level Design (HLD)': [
+    "Design a marketplace for short-term rentals with booking and reviews.",
+    "Architect a global push notification service with personalization.",
+    "Design a live sports streaming platform with low latency.",
+    "Architect a ride-hailing system with surge pricing and dispatch.",
+    "Design a large-scale email delivery system with bounce handling.",
+    "Architect a document search service with indexing and ranking.",
+    "Design a social graph service for friend recommendations.",
+    "Architect a password manager with secure sync.",
+    "Design a content moderation pipeline for user-generated content.",
+    "Architect a batch analytics platform for daily reporting.",
+  ],
+  'System Design:Distributed Systems': [
+    "Design a consensus service using Raft for configuration management.",
+    "How would you implement distributed rate limiting across regions?",
+    "Design a global unique ID generator with ordering guarantees.",
+    "How would you build a replicated cache with read-your-writes?",
+    "Design a distributed task queue with at-least-once delivery.",
+    "How would you implement a distributed lock service with leases?",
+    "Design a geo-replicated key-value store with tunable consistency.",
+    "How would you handle split-brain scenarios in a cluster?",
+    "Design a distributed tracing system for microservices.",
+    "How would you implement a leader failover strategy for a cluster?",
+  ],
+  'System Design:Scalability & Performance': [
+    "How would you scale a read-heavy feed service with strict latency SLAs?",
+    "Design a caching strategy for a multi-region storefront.",
+    "How would you shard a database for a rapidly growing user table?",
+    "Design a hot partition mitigation strategy for time-series writes.",
+    "How would you tune a search system for high QPS?",
+    "Design a batch processing system that avoids resource contention.",
+    "How would you handle load spikes during flash sales?",
+    "Design an autoscaling policy for a web tier under variable traffic.",
+    "How would you reduce tail latency in a multi-service request path?",
+    "Design a performance testing strategy with realistic traffic models.",
+  ],
+  'System Design:Database Design': [
+    "Design a schema for a subscription billing system with invoices.",
+    "How would you model a product catalog with variants and attributes?",
+    "Design a schema for a logistics tracking system with status history.",
+    "How would you design indexes for a high-cardinality analytics table?",
+    "Model a messaging system with threads, reactions, and read receipts.",
+    "Design a schema for a medical appointment booking system.",
+    "How would you model audit logs with immutable history?",
+    "Design a schema for a marketplace escrow and settlement flow.",
+    "How would you store and query geospatial locations efficiently?",
+    "Design a migration plan for splitting a monolithic database.",
+  ],
+  'System Design:API Design': [
+    "Design a REST API for order management with clear resource modeling.",
+    "How would you define pagination for large list endpoints?",
+    "Design an API versioning strategy that minimizes breaking changes.",
+    "How would you structure error codes and error payloads?",
+    "Design an OAuth-based authentication flow for third-party apps.",
+    "How would you implement idempotency keys for payments?",
+    "Design webhook retries and signature verification.",
+    "How would you rate limit per user and per IP?",
+    "Design a bulk import API with async processing.",
+    "How would you design a consistent filtering and sorting syntax?",
   ],
   'Behavioral': [
-    "Thanks for sharing! Can you tell me about a time you faced a difficult technical challenge? How did you approach it?",
-    "Good story! Describe a situation where you had a disagreement with a teammate. How did you resolve it?",
-    "Nice! Tell me about a project you're most proud of. What was your specific contribution?",
-    "What's the biggest mistake you've made in a project? What did you learn from it?",
-    "How do you handle tight deadlines? Give me a specific example.",
-    "Tell me about a time you had to learn something new quickly. How did you approach the learning?",
-    "How do you prioritize tasks when everything seems urgent? Walk me through your process.",
-    "Describe a time you received critical feedback. How did you respond?",
-    "What motivates you as a developer? Where do you see yourself in 3 years?",
-    "Last question — why should a team want to work with you? What unique value do you bring?",
-    "That wraps up our Behavioral session! You shared some great experiences. Remember to use the STAR method — Situation, Task, Action, Result. Best of luck!",
+    "Tell me about a time you had to influence a decision without authority.",
+    "Describe a project where you had to manage trade-offs under pressure.",
+    "Tell me about a time you improved an existing process.",
+    "Describe a situation where you had to handle ambiguity.",
+    "Tell me about a conflict you resolved within a team.",
+    "Describe a time you received critical feedback and applied it.",
+    "Tell me about a time you made a mistake and what you learned.",
+    "Describe a situation where you had to learn a new tool quickly.",
+    "Tell me about a time you had to mentor or help a teammate.",
+    "Describe a time you disagreed with your manager and how you handled it.",
   ],
 };
 
 // Track question index per interview session (in-memory, resets on server restart)
 const sessionTracker = new Map();
 
-function getNextOfflineQuestion(category, sessionId) {
-  const key = `${sessionId}-${category}`;
-  const questions = OFFLINE_QUESTIONS[category] || OFFLINE_QUESTIONS['Development'];
+function getNextOfflineQuestion(category, sessionId, systemType = '') {
+  const systemKey = systemType ? `${category}:${systemType}` : category;
+  const key = `${sessionId}-${systemKey}`;
+  const questions = OFFLINE_QUESTIONS[systemKey] || OFFLINE_QUESTIONS[category] || OFFLINE_QUESTIONS['Development'];
   
   let index = sessionTracker.get(key) || 0;
   if (index >= questions.length) index = questions.length - 1; // Stay on wrap-up
@@ -76,14 +151,24 @@ function getNextOfflineQuestion(category, sessionId) {
     entries.slice(0, 500).forEach(([k]) => sessionTracker.delete(k));
   }
   
-  return question;
+  return { question, systemKey };
 }
 
 // ========== MAIN HANDLER ==========
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { messages, category, description, duration, userName, sessionId } = body;
+    const { messages, category, description, duration, userName, sessionId, sessionSeed } = body;
+
+    const normalizeCategory = (value) => {
+      const v = (value || '').toLowerCase();
+      if (v.includes('system design')) return 'System Design';
+      if (v.includes('dsa')) return 'DSA';
+      if (v.includes('behavioral')) return 'Behavioral';
+      if (v.includes('development')) return 'Development';
+      return value || 'Development';
+    };
+    const normalizedCategory = normalizeCategory(category);
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
@@ -91,6 +176,41 @@ export async function POST(req) {
 
     const durationMinutes = parseInt(duration) || 30;
     const questionCount = Math.max(3, Math.min(12, Math.floor(durationMinutes / 3)));
+
+    let extractedSystemType = '';
+    if (normalizedCategory === 'System Design' && description) {
+      const match = description.match(/System type:\s*([^.]+)\./);
+      if (match) {
+        extractedSystemType = match[1].trim();
+      }
+    }
+
+    let dsaMode = '';
+    if (normalizedCategory === 'DSA' && description) {
+      const match = description.match(/DSA mode:\s*([^.]+)\./i);
+      if (match) {
+        dsaMode = match[1].trim();
+      }
+    }
+    const isDsaCodingPractice = normalizedCategory === 'DSA' && dsaMode === 'Coding Practice';
+
+    let systemDesignTopics = `URL shortener, chat app, social feed, file storage, notification system, search engine,
+Load balancing, Caching (Redis, CDN), Message queues, Microservices, Database sharding,
+API rate limiting, Monitoring, CAP theorem, Consistency patterns`;
+
+    if (extractedSystemType === 'Low-Level Design (LLD)') {
+      systemDesignTopics = `Object-Oriented Design (OOD), Class diagrams, Design Patterns (Singleton, Factory, Observer, Strategy), SOLID principles, UML, multithreading, concurrency control, parking lot ticketing system core classes`;
+    } else if (extractedSystemType === 'High-Level Design (HLD)') {
+      systemDesignTopics = `System architecture, microservices vs monolith, architectural patterns, components interaction, data flows, load balancing, CDNs, API Gateway, designing Youtube, Netflix, Uber at a high level`;
+    } else if (extractedSystemType === 'Distributed Systems') {
+      systemDesignTopics = `CAP theorem, PACELC, consensus algorithms (Raft, Paxos), leader election, distributed locking, clock synchronization, event-driven architecture, distributed tracing, network partitions`;
+    } else if (extractedSystemType === 'Scalability & Performance') {
+      systemDesignTopics = `Horizontal vs vertical scaling, Database sharding, partitioning, replication, Caching strategies (Redis, Memcached), rate limiting, handling read/write heavy workloads, eliminating bottlenecks`;
+    } else if (extractedSystemType === 'Database Design') {
+      systemDesignTopics = `Relational vs NoSQL, Indexing, Normalization vs Denormalization, ACID properties, BASE properties, Transactions, Isolation levels, query optimization, handling concurrent transactions`;
+    } else if (extractedSystemType === 'API Design') {
+      systemDesignTopics = `RESTful API principles, GraphQL vs REST vs gRPC, idempotency, pagination, versioning, authentication (JWT, OAuth), webhook design, WebSocket vs SSE, securing APIs`;
+    }
 
     // ---- Build system prompt ----
     const categoryPrompts = {
@@ -114,22 +234,20 @@ Node.js (event-driven, streams, Express), APIs (REST, GraphQL, JWT, OAuth), Data
 CSS/HTML, TypeScript, Git, Testing, Docker, CI/CD, Performance optimization.
 
 RULES:
-- Ask practical questions: "How would you implement..."
-- Include debugging scenarios
-- Ask about trade-offs
-- Cover both frontend AND backend
+- Start with requirements or context, then ask for approach, then drill into details and trade-offs
+- Include debugging or failure scenarios
+- Ask for complexity, performance, and security considerations where relevant
+- Cover both frontend AND backend across the session
 - NEVER ask DSA algorithm questions or system design questions`,
 
-      'System Design': `You are an expert system design interview coach. ONLY ask system design questions.
+      'System Design': `You are an expert system design interview coach. ONLY ask system design questions specifically focused on ${extractedSystemType || 'System Design'}.
 
-TOPICS: URL shortener, chat app, social feed, file storage, notification system, search engine,
-Load balancing, Caching (Redis, CDN), Message queues, Microservices, Database sharding,
-API rate limiting, Monitoring, CAP theorem, Consistency patterns.
+TOPICS: ${systemDesignTopics}.
 
 RULES:
-- Start with requirements, then high-level, then details, then scaling
-- Ask about trade-offs and failure scenarios
-- NEVER ask coding/algorithm questions`,
+- ${extractedSystemType === 'Low-Level Design (LLD)' ? 'Focus on classes, interfaces, patterns, and OOD principles. Do not ask about broad architecture or servers.' : 'Start with requirements, then high-level, then details, then scaling.'}
+- Ask about trade-offs and failure scenarios within the domain of ${extractedSystemType || 'system design'}.
+- NEVER ask DSA problems or language framework trivia.`,
 
       'Behavioral': `You are a warm behavioral interview coach.
 
@@ -137,44 +255,104 @@ TOPICS: Tell me about yourself, teamwork, conflict resolution, failures, learnin
 tight deadlines, feedback, career goals, STAR method.
 
 RULES:
-- Be encouraging and warm
-- Dig deeper with follow-ups
-- Coach on STAR method if answers lack structure`,
     };
 
-    const categoryPrompt = categoryPrompts[category] || categoryPrompts['Development'];
+    const dsaCodingPrompt = `You are an expert DSA coding problem writer. Return LeetCode-style problem statements only.
 
-    const systemPrompt = `${categoryPrompt}
+OUTPUT FORMAT (plain text, exact labels):
+Title: <short problem title>
+Difficulty: Easy | Medium | Hard
+Topics: <comma-separated topics>
+Description:
+<2-6 sentences describing the problem>
+Input:
+<input format>
+Output:
+<output format>
+Examples:
+1) Input: ...\n   Output: ...\n   Explanation: ... (optional)
+2) Input: ...\n   Output: ...
+Constraints:
+- ...
+Test Cases:
+- Input: ... -> Output: ...
+- Input: ... -> Output: ...
 
-You are interviewing ${userName || 'a student'} for ${category || 'technical'} practice.
+RULES:
+- No greetings, no coaching, no solution, no code.
+- Produce ONE problem only.
+- Keep the problem self-contained and unambiguous.`;
+
+    const categoryPrompt = isDsaCodingPractice
+      ? dsaCodingPrompt
+      : (categoryPrompts[normalizedCategory] || categoryPrompts['Development']);
+
+    const categoryGuards = {
+      'DSA': {
+        allow: /(array|linked list|tree|graph|dp|dynamic programming|complexity|big\s*o|stack|queue|heap|hash|binary search|sorting|two\s*pointers|sliding window|recursion)/i,
+        block: /(react|node|javascript|typescript|frontend|backend|api|rest|graphql|sql|database|system design|microservices)/i,
+      },
+      'System Design': {
+        allow: /(architecture|scalability|load balancing|cache|database|latency|throughput|availability|consistency|sharding|replication|queue|microservices|api gateway|cdn)/i,
+        block: /(binary search|linked list|dp|dynamic programming|leetcode|react|javascript)/i,
+      },
+      'Development': {
+        allow: /(react|node|javascript|typescript|api|rest|graphql|sql|database|frontend|backend|auth|testing|ci\/cd)/i,
+        block: /(binary search|linked list|dp|dynamic programming|system design|scalability|sharding)/i,
+      },
+      'Behavioral': {
+        allow: /^(\s*(tell me about|describe|walk me through|what are your|why do you|where do you see|what motivates you|why did you choose|how do you handle|have you ever|do you))/i,
+        block: /(binary search|linked list|dp|dynamic programming|react|node|javascript|typescript|html|css|frontend|backend|api|rest|graphql|sql|database|system design|scalability|microservices|web app|website|ui|ux|image|optimiz|state management|redux)/i,
+      },
+    };
+
+            const coreRules = isDsaCodingPractice
+      ? `CORE RULES:
+    - Return ONLY the problem statement in the exact output format above.
+    - Do NOT include feedback, hints, or follow-up questions.
+    - Do NOT include any greetings or coaching.`
+          : normalizedCategory === 'Behavioral'
+          ? `CORE RULES:
+        - Return ONLY a single behavioral/HR question.
+        - No technical questions, no coaching, no feedback.
+        - Start with "Tell me about" or "Describe a situation".
+        - Keep it concise (1-2 sentences).`
+      : `CORE RULES:
+    - ONE question at a time.
+    - After each answer: 1-2 sentences feedback, then next question.
+    - Keep responses SHORT (2-4 sentences). Be conversational.
+    - Keep asking questions until the session ends; do NOT wrap up early.
+    - NEVER repeat questions. Don't number them.
+    - Ensure questions are different each session; avoid reusing common openers.
+    - STAY ON TOPIC for ${normalizedCategory}. Do NOT drift to other categories.`;
+
+        const systemPrompt = `${categoryPrompt}
+
+  You are interviewing ${userName || 'a student'} for ${normalizedCategory || 'technical'} practice.
 ${description ? `Context: ${description}` : ''}
 Session: ~${durationMinutes} min, ~${questionCount} questions.
+Session seed: ${sessionSeed || 'n/a'} (use to vary questions across sessions).
 
-CORE RULES:
-- ONE question at a time.
-- After each answer: 1-2 sentences feedback, then next question.
-- Keep responses SHORT (2-4 sentences). Be conversational.
-- After ~${questionCount} questions, wrap up briefly.
-- NEVER repeat questions. Don't number them.
-- STAY ON TOPIC for ${category}. Do NOT drift to other categories.`;
+${coreRules}`;
 
     // ---- Try API call ----
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     
     if (!apiKey || apiKey.length < 10) {
       // No API key — use offline questions
-      console.log('⚠️ No OpenRouter API key configured, using offline questions');
-      const question = getNextOfflineQuestion(category || 'Development', sessionId || 'default');
-      return NextResponse.json({ message: question, success: true, mode: 'offline' });
+      console.log('⚠️ No Groq API key configured, using offline questions');
+      const modeKey = normalizedCategory === 'DSA' ? dsaMode : extractedSystemType;
+      const offline = getNextOfflineQuestion(normalizedCategory || 'Development', sessionId || 'default', modeKey);
+      return NextResponse.json({ message: offline.question, success: true, mode: 'offline', offlineKey: offline.systemKey });
     }
 
     const openai = new OpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
+      baseURL: 'https://api.groq.com/openai/v1',
       apiKey,
     });
 
-    // Try primary model, then free fallback
-    const models = ['google/gemini-2.0-flash-001', 'meta-llama/llama-3.3-70b-instruct:free'];
+    // Try primary model, then fallback
+    const models = ['llama-3.3-70b-versatile'];
     
     for (let attempt = 0; attempt < models.length; attempt++) {
       try {
@@ -185,24 +363,62 @@ CORE RULES:
             ...messages,
           ],
           temperature: 0.7,
-          max_tokens: 300,
+          max_tokens: isDsaCodingPractice ? 450 : 300,
         });
-        const aiMessage = completion.choices[0]?.message?.content;
-        if (aiMessage) {
+        const aiMessage = completion.choices[0]?.message?.content || '';
+        const guard = isDsaCodingPractice ? null : (categoryGuards[normalizedCategory] || null);
+        if (aiMessage && guard) {
+          const isBlocked = guard.block.test(aiMessage);
+          const isAllowed = guard.allow.test(aiMessage);
+          if (isBlocked || !isAllowed) {
+            console.warn('⚠️ Category guard blocked off-topic response:', { category, aiMessage });
+
+            if (normalizedCategory === 'Behavioral') {
+              const offline = getNextOfflineQuestion(normalizedCategory || 'Development', sessionId || 'default', extractedSystemType);
+              return NextResponse.json({ message: offline.question, success: true, mode: 'offline-guard', offlineKey: offline.systemKey });
+            }
+
+            const guardSystemPrompt = normalizedCategory === 'Behavioral'
+              ? `${systemPrompt}\n\nSTRICT MODE: Return ONLY a single behavioral question. No feedback. No other topics. Start with "Tell me about a time" or "Describe a situation" and use STAR-style framing.`
+              : `${systemPrompt}\n\nSTRICT MODE: Return ONLY a single ${normalizedCategory} question. No feedback. No other topics.`;
+            const guardCompletion = await openai.chat.completions.create({
+              model: models[attempt],
+              messages: [
+                { role: 'system', content: guardSystemPrompt },
+                ...messages,
+              ],
+              temperature: 0.4,
+              max_tokens: 220,
+            });
+            const guardMessage = guardCompletion.choices[0]?.message?.content || '';
+            const guardBlocked = guard.block.test(guardMessage);
+            const guardAllowed = guard.allow.test(guardMessage);
+            if (guardMessage && guardAllowed && !guardBlocked) {
+              return NextResponse.json({ message: guardMessage, success: true, mode: 'ai-guarded' });
+            }
+            const modeKey = normalizedCategory === 'DSA' ? dsaMode : extractedSystemType;
+            const offline = getNextOfflineQuestion(normalizedCategory || 'Development', sessionId || 'default', modeKey);
+            return NextResponse.json({ message: offline.question, success: true, mode: 'offline-guard', offlineKey: offline.systemKey });
+          }
+          return NextResponse.json({ message: aiMessage, success: true, mode: 'ai' });
+        } else if (aiMessage) {
           return NextResponse.json({ message: aiMessage, success: true, mode: 'ai' });
         }
       } catch (err) {
+        logError(`AI Conversation API | Attempt: ${attempt + 1}, Model: ${models[attempt]}`, err);
         console.error(`AI attempt ${attempt + 1} failed (${models[attempt]}):`, err.message);
         
         if (err.status === 401 || err.status === 403) {
           // API key is invalid — fall back to offline questions immediately
           console.log('🔑 API key invalid (401), switching to offline mode');
-          const question = getNextOfflineQuestion(category || 'Development', sessionId || 'default');
+          const modeKey = normalizedCategory === 'DSA' ? dsaMode : extractedSystemType;
+          const offline = getNextOfflineQuestion(normalizedCategory || 'Development', sessionId || 'default', modeKey);
           return NextResponse.json({ 
-            message: question, 
+            message: offline.question, 
             success: true, 
             mode: 'offline',
-            warning: 'API_KEY_INVALID'
+            warning: 'API_KEY_INVALID',
+            offlineKey: offline.systemKey
           });
         }
         
@@ -215,8 +431,9 @@ CORE RULES:
 
     // All API attempts failed — use offline
     console.log('❌ All API attempts failed, using offline questions');
-    const question = getNextOfflineQuestion(category || 'Development', sessionId || 'default');
-    return NextResponse.json({ message: question, success: true, mode: 'offline' });
+    const modeKey = normalizedCategory === 'DSA' ? dsaMode : extractedSystemType;
+    const offline = getNextOfflineQuestion(normalizedCategory || 'Development', sessionId || 'default', modeKey);
+    return NextResponse.json({ message: offline.question, success: true, mode: 'offline', offlineKey: offline.systemKey });
 
   } catch (e) {
     console.error('AI Conversation error:', e);

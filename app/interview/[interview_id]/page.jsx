@@ -5,27 +5,29 @@ import Image from "next/image";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Clock, FileText, Mic, Camera } from "lucide-react";
+import { useUser } from "@/app/provider";
 
 export default function JoinInterviewPage({ params }) {
   const { interview_id } = use(params);
   const router = useRouter();
+  const { user: contextUser, session } = useUser();
   const [interview, setInterview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+
+  const displayName =
+    contextUser?.name ||
+    session?.user?.user_metadata?.name ||
+    session?.user?.email?.split("@")[0] ||
+    "Student";
+  const displayEmail =
+    contextUser?.email ||
+    session?.user?.email ||
+    "student@prepai.com";
 
   useEffect(() => {
     async function init() {
       setLoading(true);
-      
-      // Get logged-in user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser({
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Student',
-          email: session.user.email
-        });
-      }
-      
+
       // Fetch interview data
       const { data, error } = await supabase
         .from("Interviews")
@@ -39,9 +41,9 @@ export default function JoinInterviewPage({ params }) {
   }, [interview_id]);
 
   const handleStartPractice = () => {
-    const name = user?.name || 'Student';
-    const email = user?.email || 'student@prepai.com';
-    router.push(`/interview/${interview_id}/start?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`);
+    router.push(
+      `/interview/${interview_id}/start?name=${encodeURIComponent(displayName)}&email=${encodeURIComponent(displayEmail)}`
+    );
   };
 
   if (loading) {
@@ -88,12 +90,12 @@ export default function JoinInterviewPage({ params }) {
         )}
 
         {/* User Info */}
-        {user && (
+        {displayName && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-600">
-              Practicing as: <strong>{user.name}</strong>
+              Practicing as: <strong>{displayName}</strong>
             </p>
-            <p className="text-xs text-gray-400">{user.email}</p>
+            <p className="text-xs text-gray-400">{displayEmail}</p>
           </div>
         )}
 

@@ -152,6 +152,9 @@ Interview conversation:
 
 {{conversation}}
 
+Additional analysis context:
+{{analysis}}
+
 📋 EVALUATION CRITERIA:
 Analyze the student's performance across these key areas:
 

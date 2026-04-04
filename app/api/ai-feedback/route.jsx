@@ -2,9 +2,10 @@
 import { FEEDBACK_PROMPT } from "@/services/Constants";
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { logError } from '@/lib/logger';
 
 // Generate dynamic fallback feedback based on conversation analysis
-function generateFallbackFeedback(conversation, aiResponse) {
+function generateFallbackFeedback(conversation, category = "Technical") {
     console.log('🔄 Generating dynamic fallback feedback');
     
     // Analyze conversation content for keywords and patterns
@@ -12,24 +13,32 @@ function generateFallbackFeedback(conversation, aiResponse) {
     
     // Extract key information from conversation
     const technicalKeywords = ['algorithm', 'database', 'api', 'framework', 'code', 'programming', 'sql', 'javascript', 'python', 'react', 'node', 'git', 'testing', 'debugging'];
+    const categoryKeywords = {
+        'System Design': ['scalability', 'architecture', 'throughput', 'latency', 'cache', 'load balancing', 'queue', 'replication', 'consistency', 'availability'],
+        'Development': ['frontend', 'backend', 'auth', 'oauth', 'jwt', 'rest', 'graphql', 'ci/cd', 'observability', 'performance', 'bundle', 'state management'],
+        'DSA': ['array', 'linked list', 'tree', 'graph', 'dp', 'dynamic programming', 'complexity', 'big o', 'stack', 'queue', 'hash map'],
+        'Behavioral': ['stakeholder', 'conflict', 'leadership', 'collaboration', 'ownership', 'mentoring', 'deadline', 'feedback'],
+    };
+    const extraTech = categoryKeywords[category] || [];
     const communicationKeywords = ['explain', 'describe', 'example', 'experience', 'project', 'team', 'collaboration', 'presentation'];
     const problemSolvingKeywords = ['solve', 'approach', 'strategy', 'solution', 'challenge', 'optimize', 'improve', 'analyze'];
     const experienceKeywords = ['worked', 'developed', 'built', 'managed', 'led', 'implemented', 'designed', 'years'];
     
     // Count keyword matches
-    const techMatches = technicalKeywords.filter(word => conversationLower.includes(word)).length;
+    const techMatches = technicalKeywords.filter(word => conversationLower.includes(word)).length
+        + extraTech.filter(word => conversationLower.includes(word)).length;
     const commMatches = communicationKeywords.filter(word => conversationLower.includes(word)).length;
     const problemMatches = problemSolvingKeywords.filter(word => conversationLower.includes(word)).length;
     const expMatches = experienceKeywords.filter(word => conversationLower.includes(word)).length;
     
     // Analyze conversation length and response quality
     const conversationLength = conversation.length;
-    const responseCount = (conversation.match(/User:|Assistant:|Candidate:|Interviewer:/gi) || []).length;
+    const responseCount = (conversation.match(/(Student|User|candidate|AI Coach|Assistant|Interviewer):/gi) || []).length;
     const avgResponseLength = conversationLength / Math.max(responseCount, 1);
     
     // Critical: Analyze interview completion rate to prevent fake high scores
-    const questionCount = (conversation.match(/Question \d+/gi) || []).length;
-    const candidateResponses = (conversation.match(/\[.*\] (user|candidate):/gi) || []).length;
+    const questionCount = (conversation.match(/AI Coach:/gi) || []).length;
+    const candidateResponses = (conversation.match(/Student:/gi) || []).length;
     
     // Determine completion penalty based on actual engagement
     let completionPenalty = 1.0; // Default no penalty
@@ -38,21 +47,22 @@ function generateFallbackFeedback(conversation, aiResponse) {
         // If 4+ questions were asked but minimal responses
         if (candidateResponses <= 2) {
             completionPenalty = 0.3; // Heavy penalty for minimal engagement
-        } else if (candidateResponses <= 4) {
+        } else if (candidateResponses <= 3) {
             completionPenalty = 0.5; // Moderate penalty
-        } else if (candidateResponses <= 6) {
-            completionPenalty = 0.7; // Light penalty
+        } else {
+            completionPenalty = 0.9; // Light penalty or none
         }
     } else if (questionCount >= 2) {
         // If 2-3 questions asked
         if (candidateResponses <= 1) {
             completionPenalty = 0.4; // Heavy penalty
-        } else if (candidateResponses <= 3) {
+        } else if (candidateResponses <= 2) {
             completionPenalty = 0.6; // Moderate penalty
         }
     } else {
         // Less than 2 questions - very low engagement
-        completionPenalty = 0.2;
+        if (candidateResponses > 0) completionPenalty = 0.7; // At least they answered
+        else completionPenalty = 0.2;
     }
     
     // Additional penalty for very short responses
@@ -75,11 +85,7 @@ function generateFallbackFeedback(conversation, aiResponse) {
         experience: Math.min(10, Math.max(1, Math.round((4 + (expMatches * 0.8) + (conversationLength / 1200)) * completionPenalty)))
     };
     
-    // Add some realistic variation
-    Object.keys(baseScores).forEach(key => {
-        const variation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-        baseScores[key] = Math.min(10, Math.max(1, baseScores[key] + variation));
-    });
+    // Keep scores deterministic for consistency
     
     // Generate personalized performance summary based on conversation content
     let performanceSummary = generatePersonalizedSummary(conversation, baseScores, {
@@ -88,7 +94,8 @@ function generateFallbackFeedback(conversation, aiResponse) {
         problemMatches,
         expMatches,
         conversationLength,
-        responseCount
+        responseCount,
+        category
     });
     
     // Determine recommendation based on average score and completion
@@ -126,7 +133,7 @@ function generateFallbackFeedback(conversation, aiResponse) {
 
 // Generate personalized summary based on actual conversation content
 function generatePersonalizedSummary(conversation, scores, analysisData) {
-    const { techMatches, commMatches, problemMatches, expMatches, conversationLength, responseCount } = analysisData;
+    const { techMatches, commMatches, problemMatches, expMatches, conversationLength, responseCount, category } = analysisData;
     
     console.log('🔍 Generating personalized summary with data:', {
         techMatches, commMatches, problemMatches, expMatches, 
@@ -134,9 +141,9 @@ function generatePersonalizedSummary(conversation, scores, analysisData) {
     });
     
     // Analyze interview completion and engagement
-    const questionCount = (conversation.match(/Question \d+/gi) || []).length;
-    const candidateResponses = (conversation.match(/\[.*\] (user|candidate):/gi) || []).length;
-    const completionRate = questionCount > 0 ? (candidateResponses / (questionCount * 2)) * 100 : 0; // Expected 2 responses per question
+    const questionCount = (conversation.match(/AI Coach:/gi) || []).length;
+    const candidateResponses = (conversation.match(/Student:/gi) || []).length;
+    const completionRate = questionCount > 0 ? (candidateResponses / questionCount) * 100 : 0; // Expected 1 response per question
     
     let summary = "";
     
@@ -159,9 +166,9 @@ function generatePersonalizedSummary(conversation, scores, analysisData) {
             summary += "Showed solid technical understanding with good grasp of fundamental concepts. ";
         }
     } else if (scores.technicalSkills >= 4) {
-        summary += "Displayed basic technical knowledge, though some areas could benefit from deeper exploration. ";
+        summary += `Displayed basic ${category?.toLowerCase() || "technical"} knowledge, though some areas could benefit from deeper exploration. `;
     } else {
-        summary += "Limited technical expertise was evident, indicating need for significant skill development. ";
+        summary += `Limited ${category?.toLowerCase() || "technical"} expertise was evident, indicating need for significant skill development. `;
     }
     
     // Analyze communication based on conversation flow and actual engagement
@@ -197,10 +204,26 @@ function generatePersonalizedSummary(conversation, scores, analysisData) {
     return summary;
 }
 
+const getCategoryFocus = (category) => {
+    switch (category) {
+        case 'System Design':
+            return 'Focus on architecture, scalability, reliability, trade-offs, data modeling, and failure scenarios.';
+        case 'Development':
+            return 'Focus on frontend/backend implementation, API design, debugging, performance, testing, and security trade-offs.';
+        case 'DSA':
+            return 'Focus on correctness, time/space complexity, data structures, and algorithmic reasoning.';
+        case 'Behavioral':
+            return 'Focus on communication, STAR structure, impact, and reflective learning.';
+        default:
+            return 'Focus on the core technical skills and clarity of explanations.';
+    }
+};
+
 export async function POST(req){
     try {
         console.log('AI Feedback API called');
-        const {conversation} = await req.json();
+        const {conversation, jobPosition} = await req.json();
+        const category = jobPosition || 'Technical';
         
         // Validate input
         if (!conversation || typeof conversation !== 'string' || conversation.trim() === '') {
@@ -217,21 +240,27 @@ export async function POST(req){
         try {
             console.log('🤖 Attempting AI feedback generation...');
             
-            if (!process.env.OPENROUTER_API_KEY) {
-                throw new Error('OPENROUTER_API_KEY not found');
+            if (!process.env.GROQ_API_KEY) {
+                throw new Error('GROQ_API_KEY not found');
             }
 
-            const FINAL_PROMPT = FEEDBACK_PROMPT.replace('{{conversation}}', conversation);
+            const questionCount = (conversation.match(/AI Coach:/gi) || []).length;
+            const candidateResponses = (conversation.match(/Student:/gi) || []).length;
+            const avgResponseLength = Math.round(conversation.length / Math.max(1, candidateResponses));
+            const analysisBlock = `\n\nConversation stats:\n- Category: ${category}\n- Focus: ${getCategoryFocus(category)}\n- Questions: ${questionCount}\n- Candidate responses: ${candidateResponses}\n- Conversation length: ${conversation.length}\n- Avg response length: ${avgResponseLength}`;
+            const FINAL_PROMPT = FEEDBACK_PROMPT
+                .replace('{{conversation}}', conversation)
+                .replace('{{analysis}}', analysisBlock);
             console.log('Generating AI feedback for conversation length:', conversation.length);
             
             const openai = new OpenAI({
-                baseURL: "https://openrouter.ai/api/v1",
-                apiKey: process.env.OPENROUTER_API_KEY,
+                baseURL: "https://api.groq.com/openai/v1",
+                apiKey: process.env.GROQ_API_KEY,
                 timeout: 30000,
             });
 
             const completion = await openai.chat.completions.create({
-                model: "google/gemini-2.0-flash-001",
+                model: "llama-3.3-70b-versatile",
                 messages: [
                     {
                         role: "user",
@@ -239,7 +268,7 @@ export async function POST(req){
                     }
                 ],
                 max_tokens: 1000,
-                temperature: 0.7
+                temperature: 0.3
             });
             
             if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
@@ -272,16 +301,18 @@ export async function POST(req){
                     throw new Error('No JSON found in AI response');
                 }
             } catch (parseError) {
+                logError('AI Feedback Parsing Failed', parseError);
                 console.error('JSON parsing failed:', parseError);
                 throw new Error('Failed to parse AI response');
             }
             
         } catch (aiError) {
+            logError('AI Feedback Generation Failed, falling back to manual scoring', aiError);
             console.log('⚠️ AI feedback failed, using enhanced fallback:', aiError.message);
             
             // Use enhanced fallback with conversation analysis
             const fallbackFeedbackData = {
-                feedback: generateFallbackFeedback(conversation, "Enhanced fallback feedback based on interview conversation analysis.")
+                feedback: generateFallbackFeedback(conversation, category)
             };
             
             console.log('✅ Enhanced fallback feedback generated:', fallbackFeedbackData);
@@ -302,6 +333,7 @@ export async function POST(req){
 
         
     } catch (e) {
+        logError('Global AI Feedback Error', e);
         console.error('AI Feedback API Error Details:', {
             message: e.message,
             stack: e.stack,
@@ -328,7 +360,7 @@ export async function POST(req){
             
             // Return fallback feedback instead of error
             return NextResponse.json({
-                feedback: generateFallbackFeedback(conversation, "Interview assessment completed with AI assistance."),
+                feedback: generateFallbackFeedback(conversation, category),
                 success: true,
                 fallback: true
             });
