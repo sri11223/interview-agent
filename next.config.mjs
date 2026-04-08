@@ -13,16 +13,9 @@ const nextConfig = {
     },
     // Keep heavy server-only packages out of the client bundle
     serverExternalPackages: ['nodemailer'],
-    // Webpack configuration for TensorFlow
-    webpack: (config, { isServer }) => {
-        if (!isServer) {
-            config.resolve.fallback = {
-                ...config.resolve.fallback,
-                fs: false,
-            };
-        }
-        return config;
-    },
+    // Next.js 16 uses Turbopack by default; declare an empty config to satisfy the check.
+    // The fs:false fallback is not needed with Turbopack (TensorFlow is dynamically imported).
+    turbopack: {},
 };
 
 export default nextConfig;
