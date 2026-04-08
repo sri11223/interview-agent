@@ -73,6 +73,7 @@ export default function InterviewSession({ params }) {
   const handleAnswerRef = useRef(null);
   const utteranceRef = useRef(null);
   const sessionSeedRef = useRef(null);
+  const synthKeepAliveRef = useRef(null); // fixes Chrome speechSynthesis pause-after-15s bug
 
   const logClientError = useCallback((errorMsg, context = "General Error") => {
     axios.post("/api/log-error", {
@@ -173,27 +174,53 @@ export default function InterviewSession({ params }) {
   const speak = useCallback((text) => {
     return new Promise((resolve) => {
       if (!("speechSynthesis" in window)) { resolve(); return; }
+      if (synthKeepAliveRef.current) clearInterval(synthKeepAliveRef.current);
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = voiceGender === "female" ? 1.1 : 0.85;
+
+      const doSpeak = (voices) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        utterance.pitch = voiceGender === "female" ? 1.1 : 0.85;
+        let preferred;
+        if (voiceGender === "female") {
+          preferred = voices.find(v => v.name.includes("Google UK English Female")) ||
+                      voices.find(v => v.name.toLowerCase().includes("female") && v.lang.startsWith("en")) ||
+                      voices.find(v => v.name.includes("Samantha")) || voices.find(v => v.name.includes("Zira"));
+        } else {
+          preferred = voices.find(v => v.name.includes("Google UK English Male")) ||
+                      voices.find(v => v.name.toLowerCase().includes("male") && v.lang.startsWith("en") && !v.name.toLowerCase().includes("female")) ||
+                      voices.find(v => v.name.includes("Daniel")) || voices.find(v => v.name.includes("David"));
+        }
+        if (!preferred) preferred = voices.find(v => v.lang.startsWith("en-US")) || voices.find(v => v.lang.startsWith("en"));
+        if (preferred) utterance.voice = preferred;
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+          // Chrome bug: synthesis silently pauses after ~15s. Keep it alive.
+          synthKeepAliveRef.current = setInterval(() => {
+            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+          }, 5000);
+        };
+        utterance.onend = () => { clearInterval(synthKeepAliveRef.current); setIsSpeaking(false); resolve(); };
+        utterance.onerror = () => { clearInterval(synthKeepAliveRef.current); setIsSpeaking(false); resolve(); };
+        window.speechSynthesis.speak(utterance);
+      };
+
       const voices = window.speechSynthesis.getVoices();
-      let preferred;
-      if (voiceGender === "female") {
-        preferred = voices.find(v => v.name.includes("Google UK English Female")) ||
-                    voices.find(v => v.name.toLowerCase().includes("female") && v.lang.startsWith("en")) ||
-                    voices.find(v => v.name.includes("Samantha")) || voices.find(v => v.name.includes("Zira"));
+      if (voices.length > 0) {
+        doSpeak(voices);
       } else {
-        preferred = voices.find(v => v.name.includes("Google UK English Male")) ||
-                    voices.find(v => v.name.toLowerCase().includes("male") && v.lang.startsWith("en") && !v.name.toLowerCase().includes("female")) ||
-                    voices.find(v => v.name.includes("Daniel")) || voices.find(v => v.name.includes("David"));
+        // Chrome loads voices asynchronously — wait for the event
+        const handler = () => {
+          window.speechSynthesis.removeEventListener("voiceschanged", handler);
+          doSpeak(window.speechSynthesis.getVoices());
+        };
+        window.speechSynthesis.addEventListener("voiceschanged", handler);
+        // Safety fallback if voiceschanged never fires (e.g. Firefox)
+        setTimeout(() => {
+          window.speechSynthesis.removeEventListener("voiceschanged", handler);
+          doSpeak(window.speechSynthesis.getVoices());
+        }, 1500);
       }
-      if (!preferred) preferred = voices.find(v => v.lang.startsWith("en-US")) || voices.find(v => v.lang.startsWith("en"));
-      if (preferred) utterance.voice = preferred;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => { setIsSpeaking(false); resolve(); };
-      utterance.onerror = () => { setIsSpeaking(false); resolve(); };
-      window.speechSynthesis.speak(utterance);
     });
   }, [voiceGender]);
 
@@ -218,11 +245,11 @@ export default function InterviewSession({ params }) {
       lastSpeechTime = Date.now();
       if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
       silenceTimerRef.current = setInterval(() => {
-        if (Date.now() - lastSpeechTime > 8000 && finalTranscript.trim()) {
+        if (Date.now() - lastSpeechTime > 3000 && finalTranscript.trim()) {
           clearInterval(silenceTimerRef.current);
           recognition.stop();
         }
-      }, 1000);
+      }, 500);
     };
 
     recognition.onresult = (event) => {
@@ -1044,6 +1071,16 @@ export default function InterviewSession({ params }) {
                         </span>
                       ) : isSpeaking ? "🔊 AI is speaking..." : aiThinking ? "🧠 Analyzing..." : "⏳ Processing..."}
                     </div>
+                    {isListening && (
+                      <button
+                        onClick={() => { if (recognitionRef.current) try { recognitionRef.current.stop(); } catch {} }}
+                        className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5"
+                        title="Submit your answer now"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+                        Done
+                      </button>
+                    )}
                     <button onClick={() => { if (window.confirm("End the interview?")) endInterview("Ended by you."); }}
                       className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition shadow-sm">
                       End Session

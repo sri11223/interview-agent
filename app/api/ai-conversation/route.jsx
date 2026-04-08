@@ -194,6 +194,20 @@ export async function POST(req) {
     }
     const isDsaCodingPractice = normalizedCategory === 'DSA' && dsaMode === 'Coding Practice';
 
+    // Extract domain for Development category
+    let extractedDomain = '';
+    if (normalizedCategory === 'Development' && description) {
+      const match = description.match(/Domain:\s*([^.]+)\./);
+      if (match) extractedDomain = match[1].trim();
+    }
+
+    // Extract user-specified focus topics (from the "Specific Topics" field)
+    let focusTopics = '';
+    if (description) {
+      const match = description.match(/Focus topics:\s*([^.]+)\./i);
+      if (match) focusTopics = match[1].trim();
+    }
+
     let systemDesignTopics = `URL shortener, chat app, social feed, file storage, notification system, search engine,
 Load balancing, Caching (Redis, CDN), Message queues, Microservices, Database sharding,
 API rate limiting, Monitoring, CAP theorem, Consistency patterns`;
@@ -227,17 +241,21 @@ RULES:
 - Ask follow-ups: "Can you optimize?" or "What if input is huge?"
 - NEVER ask about web development, APIs, databases, or non-DSA topics`,
 
-      'Development': `You are an expert full-stack web development interview coach. ONLY ask development questions.
+      'Development': `You are an expert ${extractedDomain ? extractedDomain : 'full-stack web'} development interview coach. ONLY ask ${extractedDomain ? extractedDomain : 'web development'} questions.
 
-TOPICS: JavaScript (closures, promises, async/await, event loop, prototypes), React (hooks, state, virtual DOM),
-Node.js (event-driven, streams, Express), APIs (REST, GraphQL, JWT, OAuth), Databases (SQL, NoSQL, indexing),
-CSS/HTML, TypeScript, Git, Testing, Docker, CI/CD, Performance optimization.
+TOPICS: ${(
+  extractedDomain?.includes('Frontend') ? 'React (hooks, state, virtual DOM, reconciliation, performance), JavaScript (closures, promises, async/await, event loop, prototypes), HTML/CSS (flexbox, grid, animations, accessibility), TypeScript, testing (Jest, Testing Library), bundlers (Webpack, Vite), Core Web Vitals, responsive design.'
+  : extractedDomain?.includes('Backend') ? 'Node.js (event loop, streams, clustering), Express/Fastify middleware patterns, REST API design, GraphQL, JWT & OAuth 2.0, SQL & NoSQL databases, indexing & query optimization, Redis caching, Docker, CI/CD pipelines, security (OWASP Top 10).'
+  : extractedDomain?.includes('Mobile') ? 'React Native or Flutter, mobile UI patterns, navigation, state management, offline-first, push notifications, native modules, performance profiling, app store deployment.'
+  : extractedDomain?.includes('API') || extractedDomain?.includes('Microservices') ? 'REST & GraphQL API design, gRPC, microservices patterns (Saga, CQRS, Event Sourcing), API gateway, service discovery, inter-service auth, rate limiting, circuit breakers, contract testing.'
+  : 'JavaScript (closures, promises, async/await, event loop, prototypes), React (hooks, state, virtual DOM), Node.js (event-driven, streams, Express), APIs (REST, GraphQL, JWT, OAuth), Databases (SQL, NoSQL, indexing), CSS/HTML, TypeScript, Git, Testing, Docker, CI/CD, Performance optimization.'
+)}
 
 RULES:
 - Start with requirements or context, then ask for approach, then drill into details and trade-offs
 - Include debugging or failure scenarios
 - Ask for complexity, performance, and security considerations where relevant
-- Cover both frontend AND backend across the session
+${extractedDomain ? `- FOCUS EXCLUSIVELY on ${extractedDomain} questions. Do NOT ask about other domains.` : '- Cover both frontend AND backend across the session'}
 - NEVER ask DSA algorithm questions or system design questions`,
 
       'System Design': `You are an expert system design interview coach. ONLY ask system design questions specifically focused on ${extractedSystemType || 'System Design'}.
@@ -323,17 +341,19 @@ RULES:
         - Keep it concise (1-2 sentences).`
       : `CORE RULES:
     - ONE question at a time.
-    - After each answer: 1-2 sentences feedback, then next question.
+    - After each answer: give 1-2 sentences of specific feedback on what was good or missing. Then either ask ONE targeted follow-up if the answer reveals a gap or something interesting, OR move to a new question.
     - Keep responses SHORT (2-4 sentences). Be conversational.
     - Keep asking questions until the session ends; do NOT wrap up early.
     - NEVER repeat questions. Don't number them.
     - Ensure questions are different each session; avoid reusing common openers.
-    - STAY ON TOPIC for ${normalizedCategory}. Do NOT drift to other categories.`;
+    - STAY ON TOPIC for ${normalizedCategory}. Do NOT drift to other categories.
+    ${focusTopics ? `- CRITICAL: The user has chosen to focus on "${focusTopics}". Ask ONLY questions about this specific topic for the ENTIRE session.` : ''}`;
 
         const systemPrompt = `${categoryPrompt}
 
   You are interviewing ${userName || 'a student'} for ${normalizedCategory || 'technical'} practice.
 ${description ? `Context: ${description}` : ''}
+${focusTopics ? `\n⚠️ MANDATORY TOPIC RESTRICTION: The candidate has chosen to focus ONLY on "${focusTopics}". Every question this session must be about this topic.` : ''}
 Session: ~${durationMinutes} min, ~${questionCount} questions.
 Session seed: ${sessionSeed || 'n/a'} (use to vary questions across sessions).
 
