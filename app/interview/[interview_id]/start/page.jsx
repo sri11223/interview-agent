@@ -3,8 +3,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import TimerComponent from "./_components/TimerComponent";
 import CodeEditor from "./_components/CodeEditor";
-import * as cocoSsd from "@tensorflow-models/coco-ssd";
-import "@tensorflow/tfjs";
+// TensorFlow loaded dynamically to avoid bloating the initial bundle
 import { supabase } from "@/services/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/provider";
@@ -532,7 +531,11 @@ export default function InterviewSession({ params }) {
     let mounted = true, intervalId;
     async function startCamera() {
       let model;
-      try { model = await cocoSsd.load(); } catch { setCameraError("Detection model failed to load"); return; }
+      try {
+        await import("@tensorflow/tfjs");
+        const cocoSsd = await import("@tensorflow-models/coco-ssd");
+        model = await cocoSsd.load();
+      } catch { setCameraError("Detection model failed to load"); return; }
       let stream;
       try { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); } catch { setCameraError("Camera access denied"); return; }
       if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }

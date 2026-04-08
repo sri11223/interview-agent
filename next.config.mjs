@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    compress: true,
     images: {
         remotePatterns: [
             {
@@ -10,6 +11,8 @@ const nextConfig = {
             },
         ],
     },
+    // Keep heavy server-only packages out of the client bundle
+    serverExternalPackages: ['nodemailer'],
     // Webpack configuration for TensorFlow
     webpack: (config, { isServer }) => {
         if (!isServer) {
